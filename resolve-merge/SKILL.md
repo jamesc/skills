@@ -1,6 +1,7 @@
 ---
 name: resolve-merge
 description: Update main branch, merge into current branch, and resolve conflicts. Use when user types /resolve-merge or asks to merge main/resolve conflicts.
+model: claude-haiku-4-5-20251001
 ---
 
 # Merge Resolve Workflow

@@ -1,6 +1,7 @@
 ---
 name: draft-adr
 description: Research a problem and draft an Architecture Decision Record. Use when user asks to design/draft/write an ADR or make an architectural decision.
+model: claude-opus-4-6
 ---
 
 # Draft ADR Workflow

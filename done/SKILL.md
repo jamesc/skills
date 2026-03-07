@@ -9,11 +9,8 @@ When activated, execute this workflow to complete work and push:
 
 ## Steps
 
-1. **Determine Issue ID**: Use the same resolution logic as `pick-issue` step 1:
-   - Extract from branch name (e.g., `BT-10` from `BT-10-implement-erlang-codegen`)
-   - Fall back to worktree name (e.g., `/workspaces/BT-34` → `BT-34`)
-   - If branch name starts with `chore/`, `docs/`, or `refactor/` and has no `BT-` prefix, treat as a standalone chore — no issue ID needed. Skip steps 10 and 11 (Linear updates), and omit `BT-{number}` from commit message and PR title.
-   - If neither works and not a chore branch, ask the user
+1. **Determine Issue ID** per pick-issue step 1 (branch name → worktree name → ask user).
+   If branch starts with `chore/`, `docs/`, or `refactor/` with no `BT-` prefix, treat as standalone — skip steps 10-11 (Linear updates) and omit issue ID from commit/PR.
 
 2. **Check branch**: Verify we're NOT on `main` branch. If on main, stop and tell the user to create a feature branch first.
 
@@ -24,27 +21,9 @@ When activated, execute this workflow to complete work and push:
 
 4. **Check for changes**: Run `git status`. If there's nothing to commit, inform the user and stop.
 
-5. **Run static checks** (skip for doc-only changes):
-   Check if the changeset is documentation/config-only:
-   ```bash
-   # Include both staged (uncommitted) and committed changes vs main
-   CHANGED_FILES=$(git diff --cached --name-only 2>/dev/null; git diff --name-only main...HEAD 2>/dev/null || true)
-   CHANGED_FILES=$(echo "$CHANGED_FILES" | sort -u)
-   DOC_ONLY=true
-   for f in $CHANGED_FILES; do
-     [ -z "$f" ] && continue
-     case "$f" in
-       *.md|*.txt|*.json|*.yaml|*.yml|*.toml|Justfile|LICENSE|docs/*|.github/skills/*) ;;
-       *) DOC_ONLY=false; break ;;
-     esac
-   done
-   ```
-   - If `DOC_ONLY=true`: Skip CI checks entirely (no build/test needed)
-   - If `DOC_ONLY=false`: Run fast static checks only (tests should have been run during development):
-   ```bash
-   just build && just clippy && just fmt-check
-   ```
-   If any check fails, report the errors and stop.
+5. **Run static checks** (skip for doc/config-only changes):
+   If all changed files (staged + committed vs main) are docs/config (`.md`, `.json`, `.yaml`, `.toml`, etc.), skip CI.
+   Otherwise run: `just build && just clippy && just fmt-check`. Stop on failure.
 
 6. **Generate commit message**: Based on the staged diff (`git diff --cached`), create a conventional commit message:
    - Use format: `type: short description BT-{number}` (include issue ID when available)
@@ -70,7 +49,11 @@ When activated, execute this workflow to complete work and push:
    
    **If PR exists:** Skip creation — the push in step 8 already updated it. Note the existing PR URL for reporting.
    
-   **If no PR exists:** Use the issue ID from step 1 (if available). Fetch the Linear issue details. Create a PR:
+   **If no PR exists:** Use the issue ID from step 1 (if available). Fetch the Linear issue title using the CLI:
+   ```bash
+   streamlinear-cli get BT-{number}
+   ```
+   Create the PR:
    ```bash
    gh pr create --title "<Issue Title> (BT-{number})" --body "<Issue description with link to Linear issue>"
    ```
@@ -81,66 +64,25 @@ When activated, execute this workflow to complete work and push:
    
    For chore/docs/refactor branches without a Linear issue, use a descriptive title based on the commit message and omit the Linear link.
 
-10. **Update Linear acceptance criteria**: Get the Linear issue from step 1, review the acceptance criteria, and add a comment marking which criteria have been completed with checkmarks (✅). Format as a structured summary showing what was implemented.
-
-11. **Update Linear state**: Mark the Linear issue as "In Review".
-
-12. **Wait for automated code reviews** (first review only): If a repository ruleset is configured to automatically request Copilot and/or CodeRabbit code review, poll for them after **initial PR creation only**. If the PR already existed (step 9), skip polling — these bots typically only review once and subsequent pushes don't trigger a new review.
-    
-    Poll for **both** Copilot and CodeRabbit reviews simultaneously:
-    
-    ```text
-    Poll: check for reviews every 60 seconds, up to 10 attempts (10 minutes max)
-    Stop polling once BOTH reviews have arrived (or timeout)
-    ```
-    
-    Use `gh api` against the PR reviews endpoint to check for reviews by bot identity:
-    
+10. **Update Linear acceptance criteria**: Use the CLI to add a comment on the issue summarising which acceptance criteria were completed with checkmarks (✅):
     ```bash
-    # Check for Copilot review
-    gh api repos/{owner}/{repo}/pulls/{pr}/reviews --paginate --jq '.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")'
-    
-    # Check for CodeRabbit review
-    gh api repos/{owner}/{repo}/pulls/{pr}/reviews --paginate --jq '.[] | select(.user.login == "coderabbitai[bot]")'
+    streamlinear-cli comment BT-{number} "✅ Implemented: ..."
     ```
-    
-    Also check review threads using `get_review_comments` — both bots leave inline code comments as review threads.
-    
-    **Important:** Only gate on verified bot identity (`user.login`). Never match on review body content alone, as that can be spoofed by arbitrary reviewers.
-    
-    **Bot identities:**
 
-    | Bot | `user.login` |
-    |-----|-------------|
-    | Copilot | `copilot-pull-request-reviewer[bot]` |
-    | CodeRabbit | `coderabbitai[bot]` |
+11. **Update Linear state**: Mark the Linear issue as "In Review":
+    ```bash
+    streamlinear-cli update BT-{number} --state "In Review"
+    ```
 
-    **If reviews already exist** (PR was pre-existing):
-    - Check if there are unresolved review threads from existing reviews
-    - If all threads are resolved, report: "Copilot review already completed ✅" and/or "CodeRabbit review already completed ✅"
-    - If unresolved threads exist, execute `/resolve-pr` workflow inline
-    - Do NOT poll for new reviews
-    
-    **If a review arrives with comments** (new PR):
-    - Inform the user: "{Bot} review received with N comments. Resolving..."
-    - Execute the `/resolve-pr` workflow inline (steps 2-11 from resolve-pr skill):
-      - Fetch and analyze all unresolved review threads
-      - Plan fixes for each comment
-      - Run tests, make changes, run tests again
-      - Commit with message: `fix: address {Bot} review comments BT-{number}`
-      - Push changes
-      - Reply to each review comment explaining the fix
-      - Report summary of all changes
-    - After resolving, report the summary of changes made
-    - If the second bot's review hasn't arrived yet, continue polling for it
-    
-    **If a review arrives with no comments (approved):**
-    - Report: "{Bot} review passed with no comments ✅"
-    
-    **If timeout (no review after 10 minutes):**
-    - Report which reviews were received and which timed out
-    - Example: "Copilot review passed ✅. CodeRabbit review not received after 10 minutes. Run `/resolve-pr` later if comments arrive."
-    - Continue to step 13 (do not block completion)
+12. **Wait for automated code reviews** (new PRs only — skip if PR already existed):
+    Poll every 60s for up to 10 minutes for Copilot (`copilot-pull-request-reviewer[bot]`) and CodeRabbit (`coderabbitai[bot]`) reviews:
+    ```bash
+    gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}'
+    ```
+    - **Reviews with comments** → chain to `/resolve-pr` (it handles enumerate → fix → verify → push)
+    - **Reviews with no comments** → report passed ✅
+    - **Timeout** → report which reviews arrived, continue to step 13
+    - **Pre-existing PR with unresolved threads** → chain to `/resolve-pr` directly, don't poll
 
 13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and review status for both Copilot and CodeRabbit.
 

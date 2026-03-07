@@ -1,6 +1,7 @@
 ---
 name: review-code
 description: Review current branch changes vs main. Use when user types /review-code or asks for a code review of their changes.
+model: claude-opus-4-6
 ---
 
 # Code Review Workflow
@@ -148,62 +149,57 @@ Zoom out from the diff. Think about how these changes interact with the rest of 
 
 ---
 
-## Pass 3: Adversarial Review (different model, challenge assumptions)
+## Pass 3: Adversarial Review (CodeRabbit + challenge assumptions)
 
-Use a **different model family** to challenge the design with fresh eyes. Different model families have different blind spots — that's the point.
+Use CodeRabbit AI and a different model family to challenge the design with fresh eyes.
 
 ### Steps
 
-15. **Launch adversarial review** using the task tool with a model from a **different family** than your own. If you're Claude, use GPT; if you're GPT, use Claude:
+15. **Run CodeRabbit review** (if the `coderabbit:review` plugin is installed):
+
+    Invoke the `/coderabbit:review` skill with `committed --base main`:
+    ```
+    /coderabbit:review committed --base main
+    ```
+
+    This runs the CodeRabbit CLI locally against committed changes and produces findings grouped by severity.
+
+16. **Launch adversarial model review** using the task tool with a model from a **different family** than your own. If you're Claude, use GPT; if you're GPT, use Claude:
 
     Launch via `task` with `agent_type: "general-purpose"` and `model: "gpt-5.2-codex"` (or `model: "claude-opus-4.6"` if you're a GPT model):
-    
+
     ```
     You are a skeptical senior engineer reviewing a PR. Your job is to find
     issues the original reviewer missed. Be adversarial but constructive.
-    
+
     Review this diff: <paste diff or key files>
-    
+
     Focus on:
     1. ASSUMPTIONS: What assumptions is this code making that might not hold?
-       - "This assumes X will always be Y — but what about Z?"
-       - "This assumes single-threaded access — is that guaranteed?"
-    
     2. FUTURE FRAGILITY: What would break this in 6 months?
-       - "If someone adds a new AST node, they'll miss updating this match"
-       - "This hard-codes a list that will grow — should it be derived?"
-    
     3. SCALING: If this codebase 10x'd, would this approach still work?
-       - "This is O(n²) which is fine now but won't scale"
-       - "This holds everything in memory — what if the input is huge?"
-    
     4. MISUSE: How could a user or developer misuse this?
-       - "Nothing prevents calling this with a nil argument"
-       - "The error message doesn't tell you which argument was wrong"
-    
     5. TESTING GAPS: What scenarios aren't tested?
-       - "No test for concurrent access to this shared state"
-       - "No test for the error path when X fails"
-    
+
     DO NOT comment on: style, formatting, naming conventions, or anything cosmetic.
     ONLY flag issues that could cause bugs, data loss, or significant maintenance burden.
     ```
 
-16. **REPL verification** (for user-facing changes only — skip for infra-only):
+17. **REPL verification** (for user-facing changes only — skip for infra-only):
     - Start REPL: `beamtalk repl`
     - Load relevant fixtures: `:load examples/counter.bt`
     - Test the specific changes interactively
     - Verify error messages are helpful and actionable
     - Document the REPL session in the summary
 
-17. **Triage adversarial findings**: The adversarial review will surface many concerns. For each:
+18. **Triage findings** from CodeRabbit and the adversarial review. For each:
     - **Valid and fixable now** → implement the fix
     - **Security issue, can't fix now** → create Linear issue with `Bug` label + urgent priority. **Never drop security findings.**
     - **Valid but out of scope** → create Linear issue
     - **Theoretical, unlikely in practice** → note but don't act
     - **Wrong / already handled** → dismiss with explanation
 
-18. **Final CI run** if any changes were made in Pass 3:
+19. **Final CI run** if any changes were made in Pass 3:
     ```bash
     just ci
     ```
@@ -212,20 +208,20 @@ Use a **different model family** to challenge the design with fresh eyes. Differ
 
 ## Summary
 
-19. **Create follow-up issues**: Anything found during review that isn't fixed in this PR **must** get a Linear issue — findings should never be just "noted" and forgotten.
+20. **Create follow-up issues**: Anything found during review that isn't fixed in this PR **must** get a Linear issue — findings should never be just "noted" and forgotten.
 
     **Always create an issue for:**
     - 🔴 **Security findings not fixed now** — label `Bug` + `urgent priority`. Never let security issues be silently dropped.
     - 🟡 **Valid concerns deferred** — out-of-scope improvements, performance concerns with evidence, architectural suggestions
-    - 🔵 **Adversarial findings worth tracking** — assumptions that could break, scaling concerns, missing test scenarios
-    
+    - 🔵 **Adversarial/CodeRabbit findings worth tracking** — assumptions that could break, scaling concerns, missing test scenarios
+
     **Don't create issues for:**
     - Theoretical concerns with no plausible trigger
     - Things already handled that the adversarial reviewer missed
-    
+
     **The bar for "fix it now" is still high** — prefer implementing over deferring. But if you defer, track it.
 
-20. **Final summary**:
+21. **Final summary**:
 
 ```markdown
 ## Code Review Summary
@@ -262,87 +258,24 @@ Use a **different model family** to challenge the design with fresh eyes. Differ
 
 ### Action Decision Matrix
 
-**Implement immediately (fix in place):**
-- Bugs, logic errors, security vulnerabilities
-- Missing error handling or edge cases
-- Formatting/style violations, unclear names
-- Missing unit tests, missing documentation
-- Simple to moderate refactoring
-- Performance improvements with clear solutions
-- **Rule of thumb:** If it can be done well in <2 hours, do it now.
+- **Fix now** (<2 hours): bugs, security, missing tests/docs, edge cases, naming, style
+- **Create Linear issue**: architectural changes, scope-expanding features, cross-team coordination, >2x PR size
+- **Security findings are NEVER optional.** Can't fix now → Linear issue with `Bug` + urgent priority immediately.
+- **When in doubt, implement it.**
 
-**Create Linear issue ONLY for:**
-- Architectural refactoring affecting many files/components
-- New features genuinely beyond PR scope
-- Performance optimizations requiring extensive benchmarking
-- Breaking API changes requiring coordination
-- Work that would 2-3x the PR size
-- **Rule of thumb:** Only defer if it requires design decisions or cross-team coordination.
+### Coding Standards
 
-**Security findings are NEVER optional.** If you find a security issue and can't fix it now, create a Linear issue with `Bug` label + urgent priority immediately. Security issues must not be "noted" without tracking.
-
-**When in doubt, implement it.**
-
-### General
-- Flag unused variables, imports, or dead code
-- Check for null/undefined handling, bounds checking, error propagation
-- Ensure consistent naming (snake_case for Rust/Erlang), avoid abbreviations
-- Limit functions to <50 lines; suggest refactoring if violated
-- Avoid deeply nested conditionals (>3 levels); prefer early returns
-
-### Security
-- Validate/sanitize all inputs (user data, APIs, files)
-- Prevent injection; flag string concatenation in queries
-- No hard-coded secrets
-- Flag unsafe deserialization, regex DoS risks
-
-### Performance
-- Avoid N+1 queries; suggest batching
-- Flag expensive ops in hot paths
-- Use efficient data structures (Sets for lookups)
-
-### DDD Compliance
-
-**Reference:** `docs/beamtalk-ddd-model.md`
-
-- Module/type/function names MUST use domain terms, not generic technical terms
-  - ✅ `CompletionProvider`, `DiagnosticProvider`, `ClassHierarchy`
-  - ❌ `completions`, `diagnostics`, `class_utils`
-- New domain terms must be added to `docs/beamtalk-ddd-model.md`
-- Every module must belong to a clear bounded context
-- Module-level doc comments must include `//! **DDD Context:** <context>`
-- Dependencies flow downward only: core never imports cli/lsp
-- DDD model doc must stay in sync with code — **not optional**
-
----
-
-## Language-Specific Guidelines
-
-### Erlang
-- Use proper OTP behaviors (`gen_server`, `gen_statem`, `supervisor`)
-- Handle all message patterns; avoid catch-all clauses that swallow errors
-- Use guards and pattern matching over conditional logic
-- Check for missing `-spec` and `-type` declarations
-- **Beamtalk-specific:**
-  - ALL errors MUST use `#beamtalk_error{}` records — no bare tuple errors
-  - ALL logging MUST use OTP `logger` module — no `io:format`
-  - ALL source files MUST include Apache 2.0 license header
-
-### Rust
-- Clippy must pass with `-D warnings`
-- Correct ownership/borrowing
-- Follow AGENTS.md conventions
-
-### Beamtalk
-- Verify syntax against `examples/` and `tests/e2e/cases/`
-- Don't hallucinate syntax (see AGENTS.md verification checklist)
-- Use `//` comments, implicit returns, no periods
+Follow `CLAUDE.md` Essential Rules, `docs/agents/expanded.md`, and `docs/development/architecture-principles.md`. Key checks:
+- DDD compliance: domain terms, bounded context headers, dependency direction (`docs/beamtalk-ddd-model.md`)
+- Erlang: `#beamtalk_error{}` records, OTP logger, `-spec` declarations, license headers
+- Rust: clippy `-D warnings`, no `unwrap()` on user input, `Document`/`docvec!` for codegen
+- Beamtalk: verify syntax in codebase before using, implicit returns, `::` annotations
 
 ---
 
 ## Severity Levels
 
-1. **🔴 Critical** — Fix immediately: bugs, crashes, security vulnerabilities, logic errors
+1. **🔴 Critical** — Fix immediately: bugs, crashes, security, logic errors
 2. **🟡 Recommended** — Implement if straightforward: missing tests, unclear names, docs
 3. **🔵 Larger** — Create Linear issue: architectural changes, major refactoring
 4. **✅ Strengths** — Note what's done well: good coverage, clear code, proper error handling

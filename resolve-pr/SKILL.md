@@ -9,18 +9,22 @@ When activated, execute this workflow to systematically address all PR review co
 
 ## Steps
 
-1. **Determine Issue ID**: Use the same resolution logic as `pick-issue` step 1:
-   - Extract from branch name (e.g., `BT-10` from `BT-10-implement-erlang-codegen`)
-   - Fall back to worktree name (e.g., `/workspaces/BT-34` → `BT-34`)
-   - If neither works, ask the user
+1. **Determine Issue ID** per pick-issue step 1 (branch name → worktree name → ask user).
 
-2. **Get PR review comments**: Fetch all unresolved review threads and general PR comments:
+2. **Enumerate ALL unresolved threads — never declare "no comments" without evidence**:
 
-   **Review threads** (code-level comments): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments` to get threads with `isResolved` and `isOutdated` metadata. Filter to unresolved, non-outdated threads.
+   Fetch from all three sources and print a numbered list of everything found:
 
-   **General PR comments** (conversation-level): Use the GitHub MCP `pull_request_read` tool with method `get_comments` to get top-level PR comments.
+   **Review threads** (code-level, includes CodeRabbit and Copilot): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`) and `isResolved`/`isOutdated` for each.
 
-   Focus on unresolved items — skip threads already marked as resolved or outdated.
+   **General PR comments** (conversation-level): Use method `get_comments`. Includes bot summary comments from CodeRabbit and Copilot.
+
+   **Bot reviews explicitly**: Also fetch reviews from named bots:
+   ```bash
+   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("copilot|coderabbit|github-copilot"; "i")) | {id, state, user: .user.login}'
+   ```
+
+   **RULE:** You MUST show the raw count from each source before saying there is nothing to do. "0 threads, 0 general comments, 0 bot reviews" is the only acceptable "nothing to do" output.
 
 3. **Analyze and plan**: For each review comment:
    - Understand what the reviewer is asking for
@@ -82,9 +86,20 @@ When activated, execute this workflow to systematically address all PR review co
     ```
     The thread node ID (e.g., `PRRT_kwDO...`) is available from the `get_review_comments` response in step 2. Only resolve threads where the fix has been committed and pushed.
 
-12. **Report summary**: Provide a summary table of all comments and how they were resolved.
+12. **Final verification pass** — re-fetch all threads after pushing and confirm completeness:
+    ```bash
+    # Re-fetch review threads and check none are still unresolved
+    gh api repos/{owner}/{repo}/pulls/{pr}/comments --jq '[.[] | {id, path, resolved: false}] | length'
+    # Re-fetch bot reviews
+    gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length'
+    ```
+    Also re-run the GitHub MCP `get_review_comments` to confirm `isResolved: true` on every thread addressed.
 
-13. **Auto-chain to done**: If all review comments have been successfully resolved (no failures, no pending issues), automatically activate the `done` skill:
+    **Do not proceed to step 13 until every thread is verified resolved or explicitly acknowledged as a known skip (e.g. outdated).**
+
+13. **Report summary**: Provide a summary table of all comments and how they were resolved, with thread IDs and commit hashes.
+
+14. **Auto-chain to done**: If all review comments have been successfully resolved (no failures, no pending issues), automatically activate the `done` skill:
     - Inform the user that all PR comments have been addressed
     - Activate the `done` skill without waiting for user confirmation
     

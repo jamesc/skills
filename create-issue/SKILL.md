@@ -112,44 +112,42 @@ Always set one of these labels:
 | **L** | Large change, 2-3 days (significant feature, multiple files) |
 | **XL** | Extra large, consider breaking down (major feature, architectural change) |
 
-## Creating via Linear Tool
+## Creating via CLI
 
-```json
-{
-  "action": "create",
-  "title": "Implement feature X",
-  "team": "BT",
-  "assignee": "jamesc.000@gmail.com",
-  "body": "Context:\n...\n\nAcceptance Criteria:\n- [ ] ...",
-  "labels": ["agent-ready", "Language Feature", "parser", "M"],
-  "priority": 3
-}
+```bash
+streamlinear-cli create \
+  --team BT \
+  --title "Implement feature X" \
+  --body "Context:\n...\n\nAcceptance Criteria:\n- [ ] ..." \
+  --priority 3
 ```
 
-**Labels should include:**
+After creation, add labels via GraphQL (labels require GraphQL — the CLI update command does not support labels):
+
+```bash
+# 1. Get label UUIDs
+streamlinear-cli graphql "query { issueLabels(first: 50) { nodes { id name } } }"
+
+# 2. Get the new issue's UUID
+streamlinear-cli get BT-XX
+
+# 3. Apply labels
+streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { labelIds: [\"<agent-ready-uuid>\", \"<Feature-uuid>\", \"<area-uuid>\", \"<size-uuid>\"] }) { success } }"
+```
+
+**Labels to include:**
 - One **Agent State** label: `agent-ready`, `needs-spec`, or `blocked`
 - One **Issue Type** label: `Feature`, `Bug`, `Improvement`, etc.
 - One **Item Area** label: `parser`, `codegen`, `stdlib`, `repl`, `cli`, `runtime`, or `class-system`
 - One **Item Size** label: `S`, `M`, `L`, or `XL`
 
-After creation, add size label if not included in initial create:
-```json
-{
-  "action": "update",
-  "id": "BT-XX",
-  "labels": ["agent-ready", "Language Feature", "parser", "M"]
-}
-```
-
 ## Creating Blocking Relationships
 
-When issues have dependencies, **always** set up Linear's "blocks" relationships:
+When issues have dependencies, **always** set up Linear's "blocks" relationships.
+First get the UUIDs of both issues via `streamlinear-cli get BT-XX`, then:
 
-```json
-{
-  "action": "graphql",
-  "graphql": "mutation { issueRelationCreate(input: { issueId: \"<blocker-id>\", relatedIssueId: \"<blocked-id>\", type: blocks }) { success } }"
-}
+```bash
+streamlinear-cli graphql "mutation { issueRelationCreate(input: { issueId: \"<blocker-uuid>\", relatedIssueId: \"<blocked-uuid>\", type: blocks }) { success } }"
 ```
 
 ## Rules

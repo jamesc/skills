@@ -1,6 +1,7 @@
 ---
 name: review-adr
 description: Review an Architecture Decision Record for completeness, correctness, and quality. Use when user types /review-adr or asks to review an ADR.
+model: claude-opus-4-6
 ---
 
 # Review ADR Workflow

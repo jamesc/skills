@@ -1,6 +1,7 @@
 ---
 name: whats-next
 description: Find the next logical piece of work. Use when user types /whats-next or asks what they should work on next, or wants recommendations for the next task.
+model: claude-haiku-4-5-20251001
 ---
 
 # What's Next Workflow
@@ -12,14 +13,14 @@ When activated, execute this workflow to recommend the next issue to work on:
 1. **Check current branch**: Determine if we're on a feature branch and extract the issue number if present.
 
 2. **Check for active cycles**: Query Linear for the BT team's active cycle:
-   ```json
-   {"action": "graphql", "graphql": "query { team(id: \"BT\") { key activeCycle { id name issues { nodes { id identifier title state { name } priority } } } } }"}
+   ```bash
+   streamlinear-cli graphql "query { team(id: \"BT\") { key activeCycle { id name issues { nodes { id identifier title state { name } priority } } } } }"
    ```
    If an active cycle exists, prioritize issues from that cycle.
 
 3. **Get recent completed work**: Query Linear for recently completed issues to understand work patterns:
-   ```json
-   {"action": "graphql", "graphql": "query { issues(filter: {team: {key: {eq: \"BT\"}}, state: {name: {in: [\"Done\", \"In Review\"]}}}, orderBy: updatedAt, first: 10) { nodes { id identifier title labels { nodes { name } } parent { identifier title } } } }"}
+   ```bash
+   streamlinear-cli graphql "query { issues(filter: {team: {key: {eq: \"BT\"}}, state: {name: {in: [\"Done\", \"In Review\"]}}}, orderBy: updatedAt, first: 10) { nodes { id identifier title labels { nodes { name } } parent { identifier title } } } }"
    ```
 
 4. **Check git history**: Review recent commits to understand what areas were recently worked on:
@@ -28,8 +29,8 @@ When activated, execute this workflow to recommend the next issue to work on:
    ```
 
 5. **Find candidate issues**: Query Linear for backlog/todo issues that are ready to work on. **Skip "In Progress" issues** — those are already being worked on by another agent.
-   ```json
-   {"action": "graphql", "graphql": "query { issues(filter: {team: {key: {eq: \"BT\"}}, state: {name: {in: [\"Backlog\", \"Todo\"]}}}, orderBy: priority, first: 20) { nodes { id identifier title description priority state { name } labels { nodes { name } } parent { identifier title } children { nodes { identifier state { name } } } relations { nodes { type relatedIssue { identifier state { name } } } } } } }"}
+   ```bash
+   streamlinear-cli graphql "query { issues(filter: {team: {key: {eq: \"BT\"}}, state: {name: {in: [\"Backlog\", \"Todo\"]}}}, orderBy: priority, first: 20) { nodes { id identifier title description priority state { name } labels { nodes { name } } parent { identifier title } children { nodes { identifier state { name } } } relations { nodes { type relatedIssue { identifier state { name } } } } } } }"
    ```
 
 6. **Prioritize issues**: Score and rank issues based on:

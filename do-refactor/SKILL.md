@@ -1,6 +1,7 @@
 ---
 name: do-refactor
 description: Execute a refactoring epic on a single branch, implementing all issues sequentially with CI verification after each. Use when user types /do-refactor or asks to execute a refactoring plan.
+model: claude-opus-4-6
 ---
 
 # Do Refactor Workflow
@@ -14,11 +15,12 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
 1. **Identify the epic**: Ask the user for the Epic ID (e.g., `BT-XXX`) or accept it from the command.
 
 2. **Load the epic and child issues**: Fetch the epic and all child issues from Linear:
+   ```bash
+   streamlinear-cli get BT-XXX
+   # Then fetch child issues (use graphql for parent/child relationships)
+   streamlinear-cli graphql "query { issue(id: \"<epic-uuid>\") { children { nodes { id identifier title description priority state { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier state { name } } } } } } } }"
    ```
-   Get epic BT-XXX
-   Get all child issues (blocking relationships)
-   ```
-   
+
    Build an ordered list respecting dependencies (blocked issues come after their blockers). If no explicit ordering, use: high priority first, smallest first (S before M before L).
 
 3. **Validate prerequisites**:
@@ -62,7 +64,7 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    ```bash
    just ci
    ```
-   
+
    **If CI fails:**
    - Fix the failure (it's caused by your refactoring)
    - Re-run `just ci` until it passes
@@ -83,25 +85,25 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    One commit per issue (or a small group if the issue has distinct phases like "add tests" then "refactor").
 
    **f. Complete the issue:**
-   ```
-   Update Linear: BT-YYY → Done
+   ```bash
+   streamlinear-cli update BT-YYY --state Done
    ```
 
    **g. Create or update the PR:**
-   
+
    *After the FIRST issue:* Create the PR immediately (**no auto-merge** — human review required):
    ```bash
    git push -u origin HEAD
    gh pr create --title "Refactor: <epic title> BT-XXX" --body "<PR body>"
    ```
    Do NOT use `--auto-merge` or enable auto-merge. Refactoring PRs must be reviewed by a human.
-   
+
    *After subsequent issues:* Push to update the existing PR:
    ```bash
    git push
    ```
-   
-   Add a PR comment summarizing what was just completed:
+
+   Add a PR comment summarising what was just completed:
    ```
    ✅ **BT-YYY: <issue title>** — Done
    - <brief summary of changes>
@@ -110,24 +112,28 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    ```
 
 7. **Handle failures gracefully**: If an issue cannot be completed:
-   
+
    **Recoverable (fix and continue):**
    - CI failure caused by the refactoring → fix it
    - Minor acceptance criteria ambiguity → use best judgment, note in commit
    - Merge conflict with changes pushed to main → `git fetch origin main && git merge origin/main`, resolve, re-run CI
-   
+
    **Blocking (stop and ask):**
    - Issue is `needs-spec` or acceptance criteria are unclear
    - CI failure that isn't caused by the refactoring (pre-existing)
    - Issue requires behavioral changes (not just structural refactoring)
    - Stuck after 3 fix attempts on the same CI failure
    - Issue depends on another issue that isn't in this epic
-   
+
    When stopping:
    - Push current progress (all completed issues are already committed)
    - Update the PR with status
    - Tell the user which issue is blocking and why
-   - Mark the blocking issue as `blocked` in Linear with explanation
+   - Mark the blocking issue as blocked in Linear:
+     ```bash
+     streamlinear-cli update BT-YYY --state "Backlog"
+     streamlinear-cli comment BT-YYY "Blocked: <explanation>"
+     ```
 
 8. **Final verification**: After all issues are complete:
    ```bash
@@ -135,7 +141,7 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    git fetch origin main
    git merge origin/main
    # If conflicts, resolve them
-   
+
    # Final CI run on the complete refactoring
    just ci
    ```
@@ -143,37 +149,41 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
 9. **Update the PR**: Edit the PR body with the final summary:
    ```markdown
    ## Refactor: <Epic Title> (BT-XXX)
-   
+
    ### Issues Completed
    - ✅ BT-YY1: <title> — <one-line summary>
    - ✅ BT-YY2: <title> — <one-line summary>
    - ...
-   
+
    ### Changes Summary
    - **Files changed:** X
    - **Lines added/removed:** +N / -M
    - **CI status:** All passing
-   
+
    ### Safety Verification
    - [ ] All existing tests pass without modification (behavioral preservation)
    - [ ] Each commit leaves CI green (incremental delivery)
    - [ ] No behavioral changes — structure only (or explicitly noted)
-   
+
    ### Testing
    - `just ci` passes on final state
    - Each intermediate commit verified with `just ci`
    ```
 
 10. **Update the epic**: Mark the epic as Done (or note remaining issues):
-    ```
-    Update Linear: BT-XXX → Done (if all child issues complete)
-    Update Linear: BT-XXX → In Progress (if some issues remain, with comment)
+    ```bash
+    # If all child issues complete:
+    streamlinear-cli update BT-XXX --state Done
+
+    # If some issues remain:
+    streamlinear-cli update BT-XXX --state "In Progress"
+    streamlinear-cli comment BT-XXX "Partial completion: X/Y issues done. Remaining: BT-YYY, ..."
     ```
 
 11. **Notify the user**: Summary of what was accomplished:
     ```markdown
     ## Refactoring Complete
-    
+
     **Epic:** BT-XXX — <title>
     **PR:** #NNN
     **Issues completed:** X/Y
@@ -187,7 +197,7 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
 
 ### Branch Strategy
 
-**One branch, one PR, entire epic.** This minimizes disruption:
+**One branch, one PR, entire epic.** This minimises disruption:
 - Other developers see one PR to review, not N small ones
 - Merge conflicts are handled once, not per-issue
 - Refactoring is atomic — either the whole thing merges or none of it does

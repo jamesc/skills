@@ -1,6 +1,7 @@
 ---
 name: linear
 description: Manage Linear issues. Use when asked about tasks, tickets, bugs, or Linear.
+model: claude-haiku-4-5-20251001
 ---
 
 # Linear CLI

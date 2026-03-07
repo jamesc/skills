@@ -28,11 +28,8 @@ Use the same resolution logic as `pick-issue` step 1:
 ### 2. Fetch the Issue
 
 Get the full issue details from Linear:
-```json
-{
-  "action": "get",
-  "id": "BT-XX"
-}
+```bash
+streamlinear-cli get BT-XX
 ```
 
 Note the following from the issue:
@@ -95,80 +92,79 @@ Based on findings, update the issue appropriately:
 
 #### If Already Fixed
 
-```json
-{
-  "action": "update",
-  "id": "BT-XX",
-  "state": "Done"
-}
-```
+```bash
+streamlinear-cli update BT-XX --state Done
+streamlinear-cli comment BT-XX "## Issue Review
 
-Then add a comment:
-```json
-{
-  "action": "comment",
-  "id": "BT-XX",
-  "body": "## Issue Review\n\n**Status**: Already implemented\n\n**Evidence**:\n- [describe where the implementation exists]\n- [reference specific files/lines]\n- [mention relevant tests]\n\nMarking as Done."
-}
+**Status**: Already implemented
+
+**Evidence**:
+- [describe where the implementation exists]
+- [reference specific files/lines]
+- [mention relevant tests]
+
+Marking as Done."
 ```
 
 #### If Still Open (with updates needed)
 
-Add a comment summarizing findings and update the description if needed:
+Add a comment summarising findings:
+```bash
+streamlinear-cli comment BT-XX "## Issue Review
 
-```json
-{
-  "action": "comment",
-  "id": "BT-XX",
-  "body": "## Issue Review\n\n**Status**: Still open, description updated\n\n**Documentation Review**:\n- [note any spec changes or clarifications]\n\n**Code Review**:\n- [note current state of relevant code]\n- [identify any partial implementations]\n\n**Updated Acceptance Criteria**:\n- [list any changes to criteria]\n\n**Files to Modify** (updated):\n- [current list of relevant files]"
-}
+**Status**: Still open, description updated
+
+**Documentation Review**:
+- [note any spec changes or clarifications]
+
+**Code Review**:
+- [note current state of relevant code]
+- [identify any partial implementations]
+
+**Updated Acceptance Criteria**:
+- [list any changes to criteria]
+
+**Files to Modify** (updated):
+- [current list of relevant files]"
 ```
 
-If the description needs significant updates:
-```json
-{
-  "action": "update",
-  "id": "BT-XX",
-  "body": "[Updated description with current context, acceptance criteria, and file list]"
-}
+If the description body needs significant updates (requires GraphQL since CLI update doesn't support body):
+```bash
+# First get the issue UUID
+streamlinear-cli get BT-XX
+# Then update body via GraphQL
+streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { description: \"[Updated description with current context, acceptance criteria, and file list]\" }) { success } }"
 ```
 
 #### If Blocked
 
-```json
-{
-  "action": "update",
-  "id": "BT-XX",
-  "state": "Backlog",
-  "labels": ["blocked", "existing-area-label", "existing-type-label"]
-}
-```
+```bash
+streamlinear-cli update BT-XX --state "Backlog"
+# Labels require GraphQL — get label UUIDs first, then apply keeping existing labels
+streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { labelIds: [\"<blocked-uuid>\", \"<existing-area-uuid>\", \"<existing-type-uuid>\"] }) { success } }"
+streamlinear-cli comment BT-XX "## Issue Review
 
-Add comment explaining what's blocking:
-```json
-{
-  "action": "comment",
-  "id": "BT-XX",
-  "body": "## Issue Review\n\n**Status**: Blocked\n\n**Blocking Issues**:\n- BT-YY: [description of dependency]\n\nMoving to Backlog with blocked label until dependencies are resolved."
-}
+**Status**: Blocked
+
+**Blocking Issues**:
+- BT-YY: [description of dependency]
+
+Moving to Backlog with blocked label until dependencies are resolved."
 ```
 
 #### If Obsolete
 
-```json
-{
-  "action": "update",
-  "id": "BT-XX",
-  "state": "Canceled"
-}
-```
+```bash
+streamlinear-cli update BT-XX --state "Canceled"
+streamlinear-cli comment BT-XX "## Issue Review
 
-```json
-{
-  "action": "comment",
-  "id": "BT-XX",
-  "body": "## Issue Review\n\n**Status**: Obsolete\n\n**Reason**:\n- [explain why this is no longer needed]\n- [reference any spec changes or superseding issues]\n\nMarking as Canceled."
-}
+**Status**: Obsolete
+
+**Reason**:
+- [explain why this is no longer needed]
+- [reference any spec changes or superseding issues]
+
+Marking as Canceled."
 ```
 
 ## Comment Format
