@@ -64,6 +64,6 @@ jobs:
         with:
           review: 'true'
           review-threshold: '80'
-          api-token: ${{ secrets.TESSL_API_TOKEN }}
+          token: ${{ secrets.TESSL_API_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
