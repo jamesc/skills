@@ -1,0 +1,26 @@
+{
+  "name": "jamesc/skills",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Shared Claude Code skills and agents",
+  "skills": {
+    "create-issue": { "path": "skills/create-issue" },
+    "do-refactor": { "path": "skills/do-refactor" },
+    "done": { "path": "skills/done" },
+    "draft-adr": { "path": "skills/draft-adr" },
+    "explain": { "path": "skills/explain" },
+    "linear": { "path": "skills/linear" },
+    "pick-issue": { "path": "skills/pick-issue" },
+    "plan-adr": { "path": "skills/plan-adr" },
+    "plan-refactor": { "path": "skills/plan-refactor" },
+    "refresh-issue": { "path": "skills/refresh-issue" },
+    "resolve-merge": { "path": "skills/resolve-merge" },
+    "resolve-pr": { "path": "skills/resolve-pr" },
+    "review-adr": { "path": "skills/review-adr" },
+    "review-code": { "path": "skills/review-code" },
+    "sync-skills": { "path": "skills/sync-skills" },
+    "update-issues": { "path": "skills/update-issues" },
+    "use-lsp": { "path": "skills/use-lsp" },
+    "whats-next": { "path": "skills/whats-next" }
+  }
+}

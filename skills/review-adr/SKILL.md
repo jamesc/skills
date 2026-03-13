@@ -2,6 +2,8 @@
 name: review-adr
 description: Review an Architecture Decision Record for completeness, correctness, and quality. Use when user types /review-adr or asks to review an ADR.
 model: claude-opus-4-6
+argument-hint: "[ADR file path or number]"
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, WebSearch
 ---
 
 # Review ADR Workflow

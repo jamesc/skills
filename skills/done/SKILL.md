@@ -1,6 +1,8 @@
 ---
 name: done
 description: Complete work and push changes. Use when user types /done or says they are finished with the current task and ready to commit/push/create PR.
+argument-hint: "[BT-number]"
+allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Done Workflow

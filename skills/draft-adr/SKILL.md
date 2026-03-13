@@ -2,6 +2,8 @@
 name: draft-adr
 description: Research a problem and draft an Architecture Decision Record. Use when user asks to design/draft/write an ADR or make an architectural decision.
 model: claude-opus-4-6
+argument-hint: "[problem or decision topic]"
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, WebSearch
 ---
 
 # Draft ADR Workflow

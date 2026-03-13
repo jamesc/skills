@@ -1,6 +1,8 @@
 ---
 name: refresh-issue
 description: Refresh a Linear issue to align with current docs and code state. Use when user types /refresh-issue BT-XX or asks to refresh/sync an issue with the codebase.
+argument-hint: "BT-XX (issue ID)"
+allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Refresh Issue Workflow

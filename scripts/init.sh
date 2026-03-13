@@ -7,7 +7,7 @@ set -euo pipefail
 # Run this from the root of any project repo to set up Claude Code
 # skills and agents from the shared skills repository.
 
-SKILLS_REPO="${SKILLS_REPO_URL:-git@github.com:jamesc/skills.git}"
+SKILLS_REPO="${SKILLS_REPO_URL:-https://github.com/jamesc/skills.git}"
 SKILLS_BRANCH="${SKILLS_BRANCH:-main}"
 TARGET_DIR=".claude/skills-repo"
 
@@ -56,6 +56,7 @@ fi
 HOOKS_DIR=".claude/hooks"
 mkdir -p "$HOOKS_DIR"
 
+echo "==> Copying hooks..."
 for hook_file in "$TARGET_DIR"/.claude/hooks/*.sh; do
   [ -f "$hook_file" ] || continue
   hook_name=$(basename "$hook_file")
@@ -71,6 +72,10 @@ done
 # Add skills-repo to .gitignore if not already there
 if [ -f .gitignore ]; then
   if ! grep -qF '.claude/skills-repo' .gitignore; then
+    # Ensure we append on a new line even if the file lacks a trailing newline
+    if [ -s .gitignore ] && [ "$(tail -c1 .gitignore)" != "" ]; then
+      echo "" >> .gitignore
+    fi
     echo '.claude/skills-repo' >> .gitignore
     echo "==> Added .claude/skills-repo to .gitignore"
   fi

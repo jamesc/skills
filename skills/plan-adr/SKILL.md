@@ -1,6 +1,8 @@
 ---
 name: plan-adr
 description: Break an accepted ADR into implementation issues with an Epic. Use when user types /plan-adr or asks to plan implementation of an ADR.
+argument-hint: "[ADR number or file path]"
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob
 ---
 
 # Plan ADR Implementation Workflow
