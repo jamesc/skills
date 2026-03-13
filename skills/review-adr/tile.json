@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/review-adr",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Review an Architecture Decision Record for completeness, correctness, and quality. Use when user types /review-adr or asks to review an ADR.",
+  "skills": {
+    "review-adr": {
+      "path": "SKILL.md"
+    }
+  }
+}

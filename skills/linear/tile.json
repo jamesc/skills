@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/linear",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Manage Linear issues. Use when asked about tasks, tickets, bugs, or Linear.",
+  "skills": {
+    "linear": {
+      "path": "SKILL.md"
+    }
+  }
+}

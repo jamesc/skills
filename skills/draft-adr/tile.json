@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/draft-adr",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Research a problem and draft an Architecture Decision Record. Use when user asks to design/draft/write an ADR or make an architectural decision.",
+  "skills": {
+    "draft-adr": {
+      "path": "SKILL.md"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/do-refactor",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Execute a refactoring epic on a single branch, implementing all issues sequentially with CI verification after each. Use when user types /do-refactor or asks to execute a refactoring plan.",
+  "skills": {
+    "do-refactor": {
+      "path": "SKILL.md"
+    }
+  }
+}

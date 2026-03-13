@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/plan-adr",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Break an accepted ADR into implementation issues with an Epic. Use when user types /plan-adr or asks to plan implementation of an ADR.",
+  "skills": {
+    "plan-adr": {
+      "path": "SKILL.md"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/update-issues",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Find and update Linear issues that need labels, blocking relationships, or metadata. Use when user says '/update-issues' with criteria like 'no labels', 'missing agent-ready', 'needs size', etc.",
+  "skills": {
+    "update-issues": {
+      "path": "SKILL.md"
+    }
+  }
+}

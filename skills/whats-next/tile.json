@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/whats-next",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Find the next logical piece of work. Use when user types /whats-next or asks what they should work on next, or wants recommendations for the next task.",
+  "skills": {
+    "whats-next": {
+      "path": "SKILL.md"
+    }
+  }
+}

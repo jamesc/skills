@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/refresh-issue",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Refresh a Linear issue to align with current docs and code state. Use when user types /refresh-issue BT-XX or asks to refresh/sync an issue with the codebase.",
+  "skills": {
+    "refresh-issue": {
+      "path": "SKILL.md"
+    }
+  }
+}

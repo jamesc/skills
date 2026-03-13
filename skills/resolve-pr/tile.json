@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/resolve-pr",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Address PR review comments systematically. Use when user types /resolve-pr or asks to fix/address PR feedback, review comments, or requested changes.",
+  "skills": {
+    "resolve-pr": {
+      "path": "SKILL.md"
+    }
+  }
+}

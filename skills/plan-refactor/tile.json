@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/plan-refactor",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Analyze the codebase and plan refactoring for code quality and maintainability. Use when user types /plan-refactor or asks to plan refactoring work.",
+  "skills": {
+    "plan-refactor": {
+      "path": "SKILL.md"
+    }
+  }
+}

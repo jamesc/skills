@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/done",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Complete work and push changes. Use when user types /done or says they are finished with the current task and ready to commit/push/create PR.",
+  "skills": {
+    "done": {
+      "path": "SKILL.md"
+    }
+  }
+}
