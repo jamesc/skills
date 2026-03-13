@@ -7,7 +7,7 @@ set -euo pipefail
 # Run this from the root of any project repo to set up Claude Code
 # skills and agents from the shared skills repository.
 
-SKILLS_REPO="${SKILLS_REPO_URL:-git@github.com:jamescoleuk/skills.git}"
+SKILLS_REPO="${SKILLS_REPO_URL:-git@github.com:jamesc/skills.git}"
 SKILLS_BRANCH="${SKILLS_BRANCH:-main}"
 TARGET_DIR=".claude/skills-repo"
 
