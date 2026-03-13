@@ -6,6 +6,13 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
+# Install CI tools (shellcheck, markdownlint-cli2, tessl)
+if ! command -v shellcheck &>/dev/null; then
+  apt-get update -qq && apt-get install -y -qq shellcheck >/dev/null 2>&1 || true
+fi
+command -v markdownlint-cli2 &>/dev/null || npm install -g markdownlint-cli2 >/dev/null 2>&1 || true
+command -v tessl &>/dev/null || npm install -g tessl >/dev/null 2>&1 || true
+
 # Copy skills from repo to global skills directory
 SKILLS_DIR="${HOME}/.claude/skills"
 mkdir -p "$SKILLS_DIR"
