@@ -20,3 +20,36 @@ jobs:
 
       - name: Lint shell scripts
         run: find . -name '*.sh' -not -path './node_modules/*' -print0 | xargs -0 shellcheck
+
+  tessl-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Tessl CLI
+        run: npm install -g tessl
+
+      - name: Lint all skills
+        run: |
+          exit_code=0
+          for skill_dir in skills/*/; do
+            [ -d "$skill_dir" ] || continue
+            echo "Linting $skill_dir..."
+            if ! tessl skill lint "$skill_dir"; then
+              exit_code=1
+            fi
+          done
+          exit $exit_code
+
+  tessl-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tesslio/publish@main
+        with:
+          review: 'true'
+          review-threshold: '80'
