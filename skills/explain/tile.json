@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/explain",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Create a walkthrough document for code, a pattern, or a feature. Prompts the user for walkthrough style (demo, linear, architecture, API reference, ...) and produces the appropriate document using showboat or plain markdown.",
+  "skills": {
+    "explain": {
+      "path": "SKILL.md"
+    }
+  }
+}

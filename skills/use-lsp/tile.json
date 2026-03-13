@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/use-lsp",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Use when navigating code, finding references, looking up definitions, understanding types, or tracing call hierarchies in TypeScript or Rust files. Prefer LSP over Grep/Glob for any navigation task where symbol semantics matter.",
+  "skills": {
+    "use-lsp": {
+      "path": "SKILL.md"
+    }
+  }
+}

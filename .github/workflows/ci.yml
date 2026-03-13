@@ -40,6 +40,10 @@ jobs:
           exit_code=0
           for skill_dir in skills/*/; do
             [ -d "$skill_dir" ] || continue
+            if [ ! -f "$skill_dir/tile.json" ]; then
+              echo "Skipping $skill_dir (no tile.json)"
+              continue
+            fi
             echo "Linting $skill_dir..."
             if ! tessl skill lint "$skill_dir"; then
               exit_code=1
@@ -60,3 +64,5 @@ jobs:
         with:
           review: 'true'
           review-threshold: '80'
+        env:
+          TESSL_API_TOKEN: ${{ secrets.TESSL_API_TOKEN }}

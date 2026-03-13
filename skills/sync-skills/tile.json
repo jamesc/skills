@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/sync-skills",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Sync modified skills and agents back to the repo and create a PR. Use when user types /sync-skills or wants to save in-session skill improvements.",
+  "skills": {
+    "sync-skills": {
+      "path": "SKILL.md"
+    }
+  }
+}
