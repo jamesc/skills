@@ -1,6 +1,8 @@
 ---
 name: create-issue
 description: Create a Linear issue with proper structure and blocking relationships. Use when creating new tasks, breaking down work, or setting up dependencies between issues.
+argument-hint: "[issue title or description]"
+allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Creating Linear Issues

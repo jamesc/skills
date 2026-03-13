@@ -1,6 +1,8 @@
 ---
 name: resolve-pr
 description: Address PR review comments systematically. Use when user types /resolve-pr or asks to fix/address PR feedback, review comments, or requested changes.
+argument-hint: "[PR number or BT-number]"
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
 
 # PR Resolve Workflow
