@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/pick-issue",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Start working on next Linear issue. Use when user types /pick-issue or asks to pick up the next task from the backlog.",
+  "skills": {
+    "pick-issue": {
+      "path": "SKILL.md"
+    }
+  }
+}

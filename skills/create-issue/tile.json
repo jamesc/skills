@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/create-issue",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Create a Linear issue with proper structure and blocking relationships. Use when creating new tasks, breaking down work, or setting up dependencies between issues.",
+  "skills": {
+    "create-issue": {
+      "path": "SKILL.md"
+    }
+  }
+}

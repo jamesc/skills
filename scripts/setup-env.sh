@@ -4,9 +4,6 @@ set -euo pipefail
 # Install tools required to run the full CI pipeline locally.
 # Supports Ubuntu/Debian, macOS (Homebrew), and Alpine.
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
 # Colors (disabled in CI)
 if [ -t 1 ]; then
   GREEN='\033[0;32m'

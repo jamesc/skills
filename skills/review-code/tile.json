@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/review-code",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Review current branch changes vs main. Use when user types /review-code or asks for a code review of their changes.",
+  "skills": {
+    "review-code": {
+      "path": "SKILL.md"
+    }
+  }
+}

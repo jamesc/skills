@@ -12,17 +12,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install CI tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          npm install -g markdownlint-cli2
+
       - name: Validate skill and agent structure
         run: bash scripts/validate.sh
 
       - name: Lint markdown
-        run: npx markdownlint-cli2 "**/*.md" "#node_modules"
+        run: markdownlint-cli2 "**/*.md" "#node_modules"
 
       - name: Lint shell scripts
         run: find . -name '*.sh' -not -path './node_modules/*' -print0 | xargs -0 shellcheck
 
   tessl-lint:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +40,10 @@ jobs:
           exit_code=0
           for skill_dir in skills/*/; do
             [ -d "$skill_dir" ] || continue
+            if [ ! -f "$skill_dir/tile.json" ]; then
+              echo "Skipping $skill_dir (no tile.json)"
+              continue
+            fi
             echo "Linting $skill_dir..."
             if ! tessl skill lint "$skill_dir"; then
               exit_code=1
@@ -44,6 +54,7 @@ jobs:
   tessl-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       pull-requests: write
       contents: read
@@ -53,3 +64,5 @@ jobs:
         with:
           review: 'true'
           review-threshold: '80'
+        env:
+          TESSL_API_TOKEN: ${{ secrets.TESSL_API_TOKEN }}

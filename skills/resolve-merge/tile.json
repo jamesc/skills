@@ -1,0 +1,11 @@
+{
+  "name": "jamesc/resolve-merge",
+  "version": "0.1.0",
+  "private": true,
+  "summary": "Update main branch, merge into current branch, and resolve conflicts. Use when user types /resolve-merge or asks to merge main/resolve conflicts.",
+  "skills": {
+    "resolve-merge": {
+      "path": "SKILL.md"
+    }
+  }
+}
