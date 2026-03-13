@@ -69,7 +69,7 @@ jobs:
             [ -d "$skill_dir" ] || continue
             [ -f "$skill_dir/tile.json" ] || continue
             echo "Reviewing $skill_dir..."
-            if ! tessl skill review --threshold 75 "$skill_dir"; then
+            if ! tessl skill review "$skill_dir"; then
               exit_code=1
             fi
           done
