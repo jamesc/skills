@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Tessl CLI
-        run: npm install -g @anthropic-ai/tessl
+        run: npm install -g tessl
 
       - name: Lint all skills
         run: |
@@ -49,6 +49,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: tesslio/skill-review@main
+      - uses: tesslio/publish@main
         with:
-          fail-threshold: 80
+          review: 'true'
+          review-threshold: '80'
