@@ -263,11 +263,13 @@ streamlinear-cli graphql "query { issues(filter: { number: { gte: 21, lte: 40 },
 ## Label Inference Rules (Summary)
 
 ### Agent State
+
 - ✅ Well-defined acceptance criteria + files → `agent-ready`
 - ⚠️ Vague or incomplete → `needs-spec`
 - 🚫 Mentions "depends on", "waiting for" → `blocked`
 
 ### Item Area (by keyword)
+
 - "parser", "lexer", "token", "AST" → `parser`
 - "codegen", "Core Erlang", "BEAM", "generate" → `codegen`
 - "stdlib", "String", "Array", "collection" → `stdlib`
@@ -277,6 +279,7 @@ streamlinear-cli graphql "query { issues(filter: { number: { gte: 21, lte: 40 },
 - "class", "method", "object" → `class-system`
 
 ### Issue Type (by title)
+
 - "Implement", "Add" → `Feature`
 - "Fix", "Bug" → `Bug`
 - "Refactor", "Clean up" → `Refactor`
@@ -285,6 +288,7 @@ streamlinear-cli graphql "query { issues(filter: { number: { gte: 21, lte: 40 },
 - "syntax", "keyword", "operator", "language feature" → `Language Feature`
 
 ### Size (by scope)
+
 - Single file, simple change → `S`
 - Few files, moderate feature → `M`
 - Many files, complex feature → `L`

@@ -152,7 +152,7 @@ streamlinear-cli graphql "mutation { issueRelationCreate(input: { issueId: \"<bl
 
 ## Rules
 
-- **Always assign to jamesc.000@gmail.com** - all issues go to James Casey
+- **Always assign to `jamesc.000@gmail.com`** - all issues go to James Casey
 - If issue A must be completed before issue B can start, then A "blocks" B
 - Always create blocking relationships when dependencies are mentioned
 - Set estimate based on complexity, not time

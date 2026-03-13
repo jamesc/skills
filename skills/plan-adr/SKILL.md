@@ -20,6 +20,7 @@ Take an **accepted ADR** and break it into a set of **sequenced, agent-ready Lin
 2. **Analyze implementation scope**: From the ADR, identify:
    
    **a. Affected components** — which pipeline layers need changes:
+
    | Layer | Files | Example changes |
    |-------|-------|----------------|
    | Lexer | `source_analysis/lexer.rs` | New tokens |

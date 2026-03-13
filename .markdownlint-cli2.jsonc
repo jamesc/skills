@@ -1,0 +1,25 @@
+{
+  "config": {
+    "default": true,
+    // Line length - not practical for skill/agent prose
+    "MD013": false,
+    // Inline HTML - used in skills
+    "MD033": false,
+    // First line heading - frontmatter comes first
+    "MD041": false,
+    // Ordered list prefix style - allow 1. 2. 3.
+    "MD029": false,
+    // Trailing spaces - common in multi-line content
+    "MD009": false,
+    // Blanks around fences - too strict for embedded examples
+    "MD031": false,
+    // Blanks around lists
+    "MD032": false,
+    // Fenced code language - not always needed
+    "MD040": false,
+    // Table column style
+    "MD060": false,
+    // Duplicate headings - "Steps" repeats intentionally under different sections
+    "MD024": false
+  }
+}

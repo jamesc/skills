@@ -1,44 +1,104 @@
-# Skills Repository
+# Skills & Agents Repository
 
-This repository contains a collection of agent skills extracted from the current project. Each skill is designed to perform a specific task and is documented in its respective `SKILL.md` file.
+A collection of Claude Code skills and agent definitions.
 
 ## Directory Structure
 
-- **create-issue/**: Skill for creating issues.
-- **do-refactor/**: Skill for performing refactoring tasks.
-- **done/**: Skill for marking tasks as done.
-- **draft-adr/**: Skill for drafting architectural decision records (ADRs).
-- **linear/**: Skill for linear workflows.
-- **pick-issue/**: Skill for picking issues to work on.
-- **plan-adr/**: Skill for planning ADRs.
-- **plan-refactor/**: Skill for planning refactoring tasks.
-- **refresh-issue/**: Skill for refreshing issue states.
-- **resolve-merge/**: Skill for resolving merge conflicts.
-- **resolve-pr/**: Skill for resolving pull requests.
-- **review-adr/**: Skill for reviewing ADRs.
-- **review-code/**: Skill for reviewing code.
-- **update-issues/**: Skill for updating issues.
-- **whats-next/**: Skill for determining the next steps.
+```
+skills/           # Claude Code skills (SKILL.md per directory)
+agents/           # Claude Code agents (.md files)
+scripts/          # Tooling
+  validate.sh     # Structural validation for skills & agents
+  install.sh      # Local install (symlinks to ~/.claude/)
+  sync-skills.sh  # Sync in-session changes back to repo
+.claude/
+  hooks/          # SessionStart/Stop hooks for web sessions
+  settings.json   # Hook registration
+```
 
-## How to Use
+## Setup
 
-Each skill is documented in its `SKILL.md` file. Refer to these files for detailed instructions on how to use each skill.
+### Claude Code on the web
 
-## Contributing
+Skills and agents are automatically installed via the `SessionStart` hook when you open this repo in a Claude Code web session. Modified skills are synced back and a PR is created when the session ends.
 
-If you wish to contribute to this repository, please ensure that your skills are well-documented and follow the existing structure.
+### Local CLI
 
-## Expected Locations for Skills
+```bash
+./scripts/install.sh
+```
 
-Different tools may expect the skills to be located in specific directories. Ensure that the skills are placed in the following locations:
+This symlinks all skills and agents to `~/.claude/skills/` and `~/.claude/agents/`, so edits in the repo are immediately available in Claude Code.
 
-- **Claude**: 
-  - **Global Skills**: `~/.claude/skills/` (available in all projects).
-  - **Project Skills**: `.claude/skills/` (project-specific).
-  - **Behavior**: When skills share the same name, the priority is Enterprise > User (Global) > Project.
-  - **Structure**: Each skill requires a `SKILL.md` file containing YAML metadata and markdown instructions.
+## Adding a Skill
 
-- **Copilot**: Looks for skills in the `~/.copilot/skills/` directory, following the same structure as Claude.
-- **AMP**: Requires skills to be organized under `~/.amp/skills/` with proper documentation in `SKILL.md` files.
+1. Create a directory under `skills/` with a `SKILL.md` file:
 
-Ensure that the directory structure and file naming conventions are consistent to avoid issues with these tools.
+```
+skills/my-skill/
+  SKILL.md
+```
+
+2. Include YAML frontmatter with at least `name` and `description`:
+
+```yaml
+---
+name: my-skill
+description: What this skill does and when to use it.
+---
+```
+
+3. Optional fields: `model`, `argument-hint`, `allowed-tools`
+
+## Adding an Agent
+
+1. Create a `.md` file under `agents/`:
+
+```
+agents/my-agent.md
+```
+
+2. Include YAML frontmatter with at least `name` and `description`:
+
+```yaml
+---
+name: my-agent
+description: What this agent does.
+---
+```
+
+3. Optional fields: `tools`, `model`, `maxTurns`, `permissionMode`, `isolation`, `background`, `skills`, `mcpServers`, `hooks`, `memory`, `disallowedTools`
+
+## Validation
+
+Run locally:
+
+```bash
+# Structural validation
+./scripts/validate.sh
+
+# Markdown linting
+npx markdownlint-cli2 "**/*.md"
+
+# Shell script linting
+shellcheck .claude/hooks/*.sh scripts/*.sh
+```
+
+CI runs all three checks on every push and PR to `main`.
+
+## Syncing Improvements
+
+If skills are improved during a Claude Code session:
+
+- **Automatic**: The `SessionStop` hook syncs changes and opens a PR
+- **Manual**: Run `/sync-skills` to sync on demand
+
+## Expected Install Locations
+
+| Tool | Global | Project |
+|------|--------|---------|
+| Claude Code | `~/.claude/skills/` / `~/.claude/agents/` | `.claude/skills/` / `.claude/agents/` |
+| Copilot | `~/.copilot/skills/` | — |
+| AMP | `~/.amp/skills/` | — |
+
+Priority: Enterprise > User (Global) > Project
