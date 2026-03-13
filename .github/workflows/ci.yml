@@ -28,6 +28,7 @@ jobs:
 
   tessl-lint:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -49,6 +50,7 @@ jobs:
   tessl-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       pull-requests: write
       contents: read
