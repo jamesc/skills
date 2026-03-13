@@ -183,8 +183,8 @@ Research a problem, explore trade-offs, and draft an **Architecture Decision Rec
    ```
 
 12. **Summary**: Present the ADR to the user and suggest next steps:
-   - "ADR NNNN written. Ready for `/plan-adr` to break this into implementation issues?"
-   - Note any open questions or decisions deferred to implementation
+    - "ADR NNNN written. Ready for `/plan-adr` to break this into implementation issues?"
+    - Note any open questions or decisions deferred to implementation
 
 ---
 

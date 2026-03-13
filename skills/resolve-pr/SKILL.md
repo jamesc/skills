@@ -76,9 +76,9 @@ When activated, execute this workflow to systematically address all PR review co
    gh api repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies -f body="<explanation of fix, commit hash, any Linear issues created>"
    ```
    Include:
-   - Commit hash where the fix was made
-   - Brief description of the change
-   - Links to any Linear issues created for follow-up work
+    - Commit hash where the fix was made
+    - Brief description of the change
+    - Links to any Linear issues created for follow-up work
 
 11. **Resolve review threads**: After replying, resolve each addressed review thread using the GraphQL API:
     ```bash
