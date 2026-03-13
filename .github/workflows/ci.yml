@@ -51,4 +51,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: tesslio/skill-review@main
         with:
-          fail-threshold: 70
+          fail-threshold: 80
