@@ -73,7 +73,9 @@ done
 if [ -f .gitignore ]; then
   if ! grep -qF '.claude/skills-repo' .gitignore; then
     # Ensure we append on a new line even if the file lacks a trailing newline
-    [ -s .gitignore ] && [ "$(tail -c1 .gitignore)" != "" ] && echo "" >> .gitignore
+    if [ -s .gitignore ] && [ "$(tail -c1 .gitignore)" != "" ]; then
+      echo "" >> .gitignore
+    fi
     echo '.claude/skills-repo' >> .gitignore
     echo "==> Added .claude/skills-repo to .gitignore"
   fi
