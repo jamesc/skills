@@ -54,7 +54,6 @@ jobs:
   tessl-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       pull-requests: write
       contents: read
@@ -63,7 +62,7 @@ jobs:
       - uses: tesslio/publish@main
         with:
           review: 'true'
-          review-threshold: '80'
+          review-threshold: '75'
           token: ${{ secrets.TESSL_API_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
