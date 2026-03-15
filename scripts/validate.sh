@@ -47,6 +47,16 @@ is_kebab_case() {
   [[ "$1" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]]
 }
 
+# Check if a model name is valid (full claude-* ID or known alias)
+is_valid_model() {
+  local model="$1"
+  [[ "$model" =~ ^claude- ]] && return 0
+  case "$model" in
+    opus|sonnet|haiku) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 echo "=== Validating skills ==="
 echo ""
 
@@ -86,8 +96,8 @@ for skill_dir in "$REPO_DIR"/skills/*/; do
 
   # Validate model field if present
   model=$(get_field "$skill_file" "model")
-  if [ -n "$model" ] && [[ ! "$model" =~ ^claude- ]]; then
-    error "$skill_name: model '$model' does not match expected pattern (claude-*)"
+  if [ -n "$model" ] && ! is_valid_model "$model"; then
+    error "$skill_name: model '$model' is not a recognized model name"
   fi
 
   # Check for unknown fields
@@ -134,8 +144,8 @@ for agent_file in "$REPO_DIR"/agents/*.md; do
   fi
 
   model=$(get_field "$agent_file" "model")
-  if [ -n "$model" ] && [[ ! "$model" =~ ^claude- ]]; then
-    error "$agent_name: model '$model' does not match expected pattern (claude-*)"
+  if [ -n "$model" ] && ! is_valid_model "$model"; then
+    error "$agent_name: model '$model' is not a recognized model name"
   fi
 
   get_keys "$agent_file" | while IFS= read -r key; do
