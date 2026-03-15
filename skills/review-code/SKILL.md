@@ -97,9 +97,9 @@ The fast pass — read the diff line by line, catch surface issues.
    - Improve naming, docs, DDD alignment
    - Update `docs/beamtalk-ddd-model.md` for new domain concepts
 
-7. **Verify CI passes** after any changes:
+7. **Verify tests pass** after any changes:
    ```bash
-   just ci
+   just test
    ```
 
 8. **Pass 1 summary**: Report findings using the severity levels (🔴🟡🔵✅).
@@ -203,6 +203,7 @@ Use CodeRabbit AI and a different model family to challenge the design with fres
     ```bash
     just ci
     ```
+    (Use `just test` for quick iteration during the review; only run full `just ci` here at the final gate.)
 
 ---
 

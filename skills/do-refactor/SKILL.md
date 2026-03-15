@@ -62,22 +62,23 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    - Keep changes minimal and focused on the issue scope
    - If the issue requires adding tests first, do that in a separate commit
 
-   **c. Verify CI passes:**
+   **c. Verify tests pass:**
    ```bash
-   just ci
+   just test
    ```
 
-   **If CI fails:**
+   **If tests fail:**
    - Fix the failure (it's caused by your refactoring)
-   - Re-run `just ci` until it passes
+   - Re-run `just test` until it passes
+   - If tests pass but you changed formatting/types, also run `just clippy && just fmt`
    - If stuck after 3 attempts, STOP and ask the user for help
-   - Do NOT move to the next issue with broken CI
+   - Do NOT move to the next issue with broken tests
 
    **d. Review the changes** (invoke the `review-code` skill):
    ```
    /review-code
    ```
-   This runs a multi-pass code review against main. Fix any issues found before committing. Re-run `just ci` if changes were made.
+   This runs a multi-pass code review against main. Fix any issues found before committing. Re-run `just test` if changes were made.
 
    **e. Commit with issue ID:**
    ```bash
@@ -169,7 +170,7 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
 
    ### Testing
    - `just ci` passes on final state
-   - Each intermediate commit verified with `just ci`
+   - Each intermediate commit verified with `just test`
    ```
 
 10. **Update the epic**: Mark the epic as Done (or note remaining issues):

@@ -33,11 +33,10 @@ When activated, execute this workflow to systematically address all PR review co
    - Determine if it needs a code fix, documentation, Linear issue, or just clarification
    - Create a todo list with all items to address
 
-4. **Run tests first**: Verify current state passes all checks:
+4. **Run tests first**: Verify current state passes checks:
    ```bash
-   just ci
+   just test
    ```
-   This runs all CI checks (build, clippy, fmt-check, test, test-e2e).
 
 5. **Write tests for behavioral changes**: For code fixes that change logic or behavior:
    - Write a failing test that demonstrates the bug or missing behavior
@@ -58,6 +57,7 @@ When activated, execute this workflow to systematically address all PR review co
    ```bash
    just ci
    ```
+   (Use `just test` for quick iteration; `just ci` is the final gate before push.)
 
 8. **Commit changes**: Stage and commit with a descriptive message (using issue ID from step 1):
    ```bash

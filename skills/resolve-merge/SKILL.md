@@ -53,17 +53,15 @@ When activated, execute this workflow to update main and merge it into the curre
 
 6. **Verify resolution**:
    ```bash
-   just ci
+   just test
    ```
-   This runs all CI checks (build, clippy, fmt-check, test, test-e2e).
-   
    If tests fail, review and fix the merge resolution.
-   
+
    If snapshot tests fail due to intentional changes from main:
    ```bash
    cargo insta accept
    ```
-   Then re-run `just ci` to confirm.
+   Then re-run `just test` to confirm. Run `just ci` only once before pushing.
 
 7. **Complete the merge**:
     ```bash

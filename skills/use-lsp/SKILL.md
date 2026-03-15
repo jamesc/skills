@@ -1,6 +1,6 @@
 ---
 name: use-lsp
-description: Use when navigating code, finding references, looking up definitions, understanding types, or tracing call hierarchies in TypeScript or Rust files. Prefer LSP over Grep/Glob for any navigation task where symbol semantics matter.
+description: Use when navigating code, finding references, looking up definitions, understanding types, or tracing call hierarchies in TypeScript, Rust, or Beamtalk (.bt) files. Prefer LSP over Grep/Glob for any navigation task where symbol semantics matter.
 ---
 
 # Use LSP for Code Navigation
@@ -28,6 +28,7 @@ The `LSP` tool provides semantic code intelligence. Use it instead of text searc
 
 - Running `Grep` for a function name to find its callers → use `LSP findReferences`
 - Running `Grep` for a struct/class name to find its definition → use `LSP goToDefinition`
+- Running `Grep` for a Beamtalk method name to find where it's defined → use `LSP goToDefinition`
 - Reading a whole file to understand what a function returns → use `LSP hover`
 - Running `Grep` for a type name to find implementations → use `LSP goToImplementation`
 
@@ -56,6 +57,7 @@ Using `Grep` to find all usages of a function, then reading each file to underst
 
 ## Limitations
 
-- LSP requires the language server to be running (rust-analyzer for Rust, tsserver for TypeScript)
+- LSP requires the language server to be running (rust-analyzer for Rust, tsserver for TypeScript, beamtalk-lsp for Beamtalk)
+- Beamtalk LSP requires `just build` first — the binary is at `./target/debug/beamtalk-lsp`. If LSP calls on `.bt` files return nothing, the binary may not exist yet
 - If LSP returns no results, fall back to `Grep` — the server may not have indexed the file yet
 - LSP works on committed or saved files; unsaved edits may not be reflected immediately

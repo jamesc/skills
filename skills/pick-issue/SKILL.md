@@ -147,7 +147,7 @@ After implementation, chain automatically through the remaining skills:
 
 1. **Check for existing PR** (`gh pr list --head $(git branch --show-current)`).
    If one exists with unresolved review comments → chain to `/resolve-pr`.
-2. Chain to `/review-code`. If review finds 🔴/🟡 issues, fix them and re-run `just ci`.
+2. Chain to `/review-code`. If review finds 🔴/🟡 issues, fix them and re-run `just test` (or `just ci` if clippy/fmt changes were needed).
 3. Chain to `/done`.
 
 Only stop for user input if review identifies 🔵 issues requiring design decisions.
