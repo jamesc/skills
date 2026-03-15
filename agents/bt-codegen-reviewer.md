@@ -12,6 +12,7 @@ You are a Core Erlang codegen reviewer for the Beamtalk project. You inspect gen
 Beamtalk compiles `.bt` source files to Core Erlang (`.core` files) via the Rust compiler. The generated code follows these conventions:
 
 ### Module structure
+
 ```
 module 'module_name' [exports...]
   attributes [...]
@@ -23,16 +24,19 @@ end
 ```
 
 ### Actor (gen_server) modules
+
 - Export: `'start_link'/1`, `'init'/1`, `'handle_cast'/2`, `'handle_call'/3`, `'code_change'/3`, `'terminate'/2`
 - Export: `'dispatch'/4`, `'safe_dispatch'/3`, `'method_table'/0`, `'has_method'/1`
 - Export: `'spawn'/0`, `'spawn'/1`, `'new'/0`, `'new'/1`, `'superclass'/0`
 - `on_load` attribute triggers `register_class/0` for class registration
 
 ### Value type modules
+
 - Simpler than actor modules — no gen_server, no spawn/init
 - Methods are standalone functions: `'method_name'/N = fun (...) ->`
 
 ### NLR (Non-Local Return) pattern
+
 When a method body uses `^` (early return from block), the generated code wraps the body in:
 ```
 let NlrToken = call 'erlang':'make_ref'() in
@@ -47,14 +51,17 @@ catch
 For methods inside dispatch case arms, this is wrapped in a `letrec '__nlr_body'/0`.
 
 ### State threading
+
 - State variables follow the convention `State0`, `State1`, `State2`, etc.
 - The final state is always threaded through method calls
 
 ### Self reference
+
 - `Self` is built via `call 'beamtalk_actor':'make_self'(State)`
 - Refers to `#beamtalk_object{class, class_mod, pid}` record
 
 ### Error records
+
 - All errors use `#beamtalk_error{}` — never bare tuples like `{error, Reason}`
 
 ## How to find generated files

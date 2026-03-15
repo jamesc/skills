@@ -52,6 +52,7 @@ Format:
 ```
 
 ### Sizes
+
 Map Linear size estimates: S = small, M = medium, L = large, XL = extra large.
 
 ### If asked for a specific area
