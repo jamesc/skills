@@ -62,11 +62,12 @@ Take an **accepted ADR** and break it into a set of **sequenced, agent-ready Lin
      BT-D: Codegen for Y (blocked by BT-A, BT-B)
    
    Phase 3 (integration, depends on Phase 2):
-     BT-E: E2E tests (blocked by BT-C, BT-D)
-     BT-F: REPL integration (blocked by BT-D)
-   
-   Phase 4 (polish):
-     BT-G: Documentation and examples (blocked by BT-E)
+     BT-E: REPL integration (blocked by BT-D)
+     BT-F: MCP tools if applicable (blocked by BT-D)
+
+   Phase 4 (validation + polish):
+     BT-G: E2E btscript test (blocked by BT-E) — REQUIRED for user-facing features
+     BT-H: Documentation and examples (blocked by BT-E)
    ```
 
    **Issue sizing rules:**
@@ -199,6 +200,8 @@ Every issue must be `agent-ready` — an agent should be able to pick it up with
 3. **Tests with each phase, not at the end**: Every issue includes tests for its specific changes. Don't create a "write all the tests" issue at the end.
 
 4. **REPL integration is not optional**: If the ADR affects user-facing behavior, include a REPL integration issue. Features aren't done until users can interact with them.
+
+5. **E2E validation as the final phase**: The last issue in every epic MUST include an e2e btscript test (`tests/e2e/cases/<feature>.btscript`) that exercises the feature end-to-end from the Beamtalk REPL. This catches integration failures invisible to unit tests — missing code path dependencies, serialization bugs, broken describe/list-tools responses. The ADR 0069 tracing epic shipped 7 PRs that all passed CI but were non-functional from the REPL because no e2e test existed. **EUnit and BUnit alone are insufficient for user-facing features.**
 
 ### Splitting Large Issues
 
