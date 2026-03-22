@@ -88,6 +88,11 @@ Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for 
   ```bash
   gh pr merge <PR> --squash --admin
   ```
+- After merge, clean up the agent's worktree to reclaim disk space:
+  ```bash
+  git worktree remove --force <worktree-path>
+  git branch -D <branch-name>
+  ```
 
 **4d. Once all PRs in the wave are merged**, start Wave N+1.
 
