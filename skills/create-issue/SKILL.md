@@ -16,7 +16,7 @@ Every issue **must** have:
 | Field | Value |
 |-------|-------|
 | **Team** | `BT` |
-| **Assignee** | `jamesc.000@gmail.com` (James Casey) |
+| **Assignee** | `--assignee me` (current user) |
 | **Agent State Label** | `agent-ready` or `needs-spec` |
 | **Item Area Label** | Component affected (see below) |
 | **Estimate (Size)** | T-shirt size: S, M, L, XL |
@@ -154,7 +154,7 @@ streamlinear-cli graphql "mutation { issueRelationCreate(input: { issueId: \"<bl
 
 ## Rules
 
-- **Always assign to `jamesc.000@gmail.com`** - all issues go to James Casey
+- **Always assign to `me`** — use `--assignee me` so issues go to the current user
 - If issue A must be completed before issue B can start, then A "blocks" B
 - Always create blocking relationships when dependencies are mentioned
 - Set estimate based on complexity, not time
