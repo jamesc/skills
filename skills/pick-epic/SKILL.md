@@ -1,6 +1,6 @@
 ---
 name: pick-epic
-description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and CodeRabbit pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
+description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and automated reviews (CodeRabbit + Copilot) pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
 model: claude-opus-4-6
 argument-hint: "BT-XXX (epic ID)"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 
 # Pick Epic Workflow
 
-Execute an epic by grouping its children into **dependency-ordered waves** and running each wave as **parallel subagents**, one per issue. Each issue gets its own isolated worktree, its own PR (squash-merged to main), and is merged as soon as CI passes and CodeRabbit is satisfied. Waves are sequential — Wave N+1 starts only after all Wave N PRs are merged.
+Execute an epic by grouping its children into **dependency-ordered waves** and running each wave as **parallel subagents**, one per issue. Each issue gets its own isolated worktree, its own PR (squash-merged to main), and is merged as soon as CI passes and automated reviews (CodeRabbit + Copilot) are satisfied. Waves are sequential — Wave N+1 starts only after all Wave N PRs are merged.
 
 **Key difference from `/do-refactor`:** This skill uses isolated worktrees and parallel subagents for maximum throughput — one PR per issue, not one PR for the whole epic. Use this for any L/XL epic where issues touch non-overlapping files.
 
@@ -79,7 +79,20 @@ Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for 
 - Check the PR URL returned
 - Watch CI: `gh pr view <PR> --json statusCheckRollup`
 - If CI fails: diagnose the failure, push a fix to the agent's branch
-- If CodeRabbit requests changes:
+- **Wait for automated reviews** before merging. Poll every 60s for up to 5 minutes:
+  ```bash
+  gh api repos/<owner>/<repo>/pulls/<PR>/reviews \
+    --jq '[.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}]'
+  ```
+  - **Copilot**: Wait for its review to appear. If Copilot's review body contains "usage limits" or "rate limit", skip — Copilot is unavailable this run.
+  - **CodeRabbit**: Wait for its review to appear (APPROVED or CHANGES_REQUESTED).
+  - **Timeout (5 min)**: Proceed if at least one bot reviewed. If neither appeared, note it in the merge summary but proceed.
+- **Handle Copilot comments**: Copilot reviews are always `COMMENTED` (never blocking), but their findings are valuable:
+  - Spawn a subagent (or fix directly) to address genuine bugs Copilot identified
+  - Reply to each addressed comment with the fix commit hash
+  - Skip style/nitpick suggestions — note them in the merge summary
+  - If Copilot found nothing actionable, proceed
+- **Handle CodeRabbit reviews**: If CodeRabbit requests changes:
   - Fix genuine issues introduced by the PR (scope creep, bugs)
   - Dismiss pre-existing issues with a comment: "Pre-existing code, not introduced by this PR"
   - Dismiss scope-creep feedback with a comment explaining the deliberate choice
@@ -160,6 +173,33 @@ When a subagent's PR has a CI failure:
 - Windows: `String` vs `&str` when a `#[cfg(windows)]` rebind creates an owned value
 - macOS: path separator assumptions
 
+## Handling Copilot Reviews
+
+Copilot reviews are `COMMENTED` (non-blocking) but contain valuable findings. **Do not skip them.**
+
+1. **Wait for Copilot's review** to appear (poll alongside CodeRabbit)
+2. **Check for rate limiting**: If the review body contains "usage limits", "rate limit", or "couldn't generate", Copilot is unavailable — skip and note in merge summary
+3. **Get inline comments**:
+   ```bash
+   gh api repos/<owner>/<repo>/pulls/<PR>/reviews/<review-id>/comments \
+     --jq '[.[] | {id, path, body: .body[:200]}]'
+   ```
+4. **Evaluate each comment**:
+
+| Finding type | Action |
+|---|---|
+| Bug introduced by this PR | Fix it, push a commit, reply with fix hash |
+| Valid improvement, small scope | Fix it inline if < 10 lines |
+| Valid improvement, large scope | Create a follow-up Linear issue, reply with issue link |
+| Pre-existing code | Reply: "Pre-existing, not introduced by this PR" |
+| False positive / style nitpick | Skip — no reply needed |
+
+5. **Reply to addressed comments**: For each comment you fixed:
+   ```bash
+   gh api repos/<owner>/<repo>/pulls/<PR>/comments/<comment-id>/replies \
+     -f body="Fixed in <commit-hash>"
+   ```
+
 ## Handling CodeRabbit Reviews
 
 CodeRabbit may block merging with `CHANGES_REQUESTED`. Evaluate each finding:
@@ -197,5 +237,5 @@ Stop and ask the user for guidance if:
 - A subagent fails to compile after 2 fix attempts
 - An issue has genuinely ambiguous acceptance criteria
 - Two issues in the same wave have unexpected file overlap discovered mid-execution
-- CodeRabbit raises a security finding that is not pre-existing
+- CodeRabbit or Copilot raises a security finding that is not pre-existing
 - A PR has merge conflicts with main (means another PR in this wave touched the same files)
