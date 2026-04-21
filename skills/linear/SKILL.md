@@ -4,100 +4,24 @@ description: Manage Linear issues. Use when asked about tasks, tickets, bugs, or
 model: claude-haiku-4-5-20251001
 ---
 
-# Linear CLI
+# Linear
 
-Command-line interface for Linear issue management.
+Use the Linear MCP tools (`mcp__linear-server__*`) for all Linear interactions. The MCP tool descriptions document arguments — this skill only covers conventions that aren't obvious from those descriptions.
 
-## Search Issues
+## Core tools
 
-```bash
-# Your active issues (default)
-streamlinear-cli search
+| Action | Tool |
+|---|---|
+| Find issues | `list_issues` (defaults to caller's active issues when `assignee: "me"`) |
+| Issue details | `get_issue` (accepts `ABC-123`, URL, or UUID) |
+| Create **or** update issue | `save_issue` — pass `id` to update, omit `id` to create |
+| Comment | `save_comment` (pass `id` to edit) |
+| List comments | `list_comments` |
+| Teams / users / statuses | `list_teams`, `list_users`, `list_issue_statuses` |
 
-# Text search
-streamlinear-cli search "auth bug"
+Everything else (projects, milestones, labels, documents, attachments) has a matching `list_*` / `get_*` / `save_*` tool — check the tool list before hand-rolling GraphQL.
 
-# Filter by state
-streamlinear-cli search --state "In Progress"
-
-# Filter by assignee
-streamlinear-cli search --assignee me
-streamlinear-cli search --assignee user@example.com
-
-# Filter by team
-streamlinear-cli search --team BT
-
-# Combine filters
-streamlinear-cli search --state "In Progress" --assignee me --team BT
-```
-
-## Get Issue Details
-
-```bash
-# By short ID
-streamlinear-cli get BT-123
-
-# By URL
-streamlinear-cli get "https://linear.app/team/issue/BT-123"
-```
-
-## Update Issue
-
-```bash
-# Change state
-streamlinear-cli update BT-123 --state Done
-streamlinear-cli update BT-123 --state "In Progress"
-
-# Change priority (1=Urgent, 2=High, 3=Medium, 4=Low)
-streamlinear-cli update BT-123 --priority 1
-
-# Assign to me
-streamlinear-cli update BT-123 --assignee me
-
-# Assign to someone else
-streamlinear-cli update BT-123 --assignee user@example.com
-
-# Unassign
-streamlinear-cli update BT-123 --assignee null
-
-# Multiple updates
-streamlinear-cli update BT-123 --state Done --priority 3
-```
-
-## Comment on Issue
-
-```bash
-streamlinear-cli comment BT-123 "Fixed in commit abc123"
-streamlinear-cli comment BT-123 "Blocked on dependency update"
-```
-
-## Create Issue
-
-```bash
-# Basic
-streamlinear-cli create --team BT --title "Bug: Login fails"
-
-# With description
-streamlinear-cli create --team BT --title "Bug: Login fails" --body "Users see error on submit"
-
-# With priority
-streamlinear-cli create --team BT --title "Urgent fix" --priority 1
-```
-
-## List Teams
-
-```bash
-streamlinear-cli teams
-```
-
-## Raw GraphQL
-
-```bash
-streamlinear-cli graphql "query { viewer { name email } }"
-streamlinear-cli graphql "query { projects { nodes { id name } } }"
-```
-
-## Priority Reference
+## Priority values
 
 | Value | Label |
 |-------|-------|
@@ -107,6 +31,14 @@ streamlinear-cli graphql "query { projects { nodes { id name } } }"
 | 3 | Medium |
 | 4 | Low |
 
+## Conventions
+
+- **"me" / "my issues":** pass `assignee: "me"` to `list_issues`. The MCP resolves it to the authenticated user.
+- **State names are fuzzy** in most tools — `"in progress"` matches `"In Progress"`. When in doubt, call `list_issue_statuses` for the exact names for a team.
+- **Issue IDs:** `BT-123` style shorthand, Linear URLs, and UUIDs are all accepted by `get_issue` / `save_issue` / `save_comment`.
+- **Unassign:** pass `assignee: null` to `save_issue`.
+- **Create vs update:** both go through `save_issue`. Presence of `id` is the discriminator.
+
 ## Authentication
 
-Uses `LINEAR_API_TOKEN` environment variable (already configured).
+Handled by the MCP server config; no per-call token needed.
