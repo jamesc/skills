@@ -19,7 +19,7 @@ Use the Linear MCP tools (`mcp__linear-server__*`) for all Linear interactions. 
 | List comments | `list_comments` |
 | Teams / users / statuses | `list_teams`, `list_users`, `list_issue_statuses` |
 
-Everything else (projects, milestones, labels, documents, attachments) has a matching `list_*` / `get_*` / `save_*` tool — check the tool list before hand-rolling GraphQL.
+Projects, milestones, and documents have the same `list_*` / `get_*` / `save_*` (or `create_*` / `update_*`) shape — check the tool list before hand-rolling GraphQL. Attachments have `create_*` / `get_*` / `delete_*`. Labels can be listed (`list_issue_labels`, `list_project_labels`) and created (`create_issue_label`), but **applying** a label to an existing issue and **creating blocking relationships** (`issueRelationCreate`) still require GraphQL mutations — see `create-issue/SKILL.md` for examples.
 
 ## Priority values
 
