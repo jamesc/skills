@@ -86,22 +86,28 @@ When activated, execute this workflow to complete work and push:
     ```
     If both still missing after 10 min, note it in the report and continue to (b). Pre-existing PRs skip the wait.
 
-    **b. Enumerate unresolved findings** — both inline threads AND top-level review bodies:
+    **b. Enumerate unresolved findings** — both inline threads AND top-level review bodies. Derive `OWNER`/`REPO` at runtime so the gate works in any repo:
     ```bash
     PR=$(gh pr view --json number --jq .number)
-    OWNER=jamesc; REPO=beamtalk
+    OWNER=$(gh repo view --json owner --jq .owner.login)
+    REPO=$(gh repo view --json name --jq .name)
     AUTHOR=$(gh api "repos/${OWNER}/${REPO}/pulls/${PR}" --jq .user.login)
     gh api graphql -f query="
     {
       repository(owner: \"${OWNER}\", name: \"${REPO}\") {
         pullRequest(number: ${PR}) {
           reviewThreads(first: 100) {
+            pageInfo { hasNextPage endCursor }
             nodes {
               isResolved
-              comments(first: 50) { nodes { author { login } url body } }
+              comments(first: 100) {
+                pageInfo { hasNextPage endCursor }
+                nodes { author { login } url body }
+              }
             }
           }
           reviews(first: 100) {
+            pageInfo { hasNextPage endCursor }
             nodes { author { login } state body url submittedAt }
           }
         }
@@ -118,9 +124,17 @@ When activated, execute this workflow to complete work and push:
         | select(.body != null and .body != \"\")
         | select((.state == \"CHANGES_REQUESTED\")
               or (.body | test(\"Actionable comments posted: [1-9]\")))
-        | {url, state, body: (.body[:200])}]
+        | {url, state, body: (.body[:200])}],
+      pagination: {
+        threads_has_next: .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage,
+        reviews_has_next: .data.repository.pullRequest.reviews.pageInfo.hasNextPage,
+        thread_comments_has_next: [.data.repository.pullRequest.reviewThreads.nodes[]
+          | .comments.pageInfo.hasNextPage] | any
+      }
     }"
     ```
+
+    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: \"<endCursor>\"` on the relevant connection and merge the additional pages into the inline/top-level lists before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
 
     **Dismissal heuristic:**
     - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
