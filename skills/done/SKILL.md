@@ -103,6 +103,7 @@ When activated, execute this workflow to complete work and push:
           reviewThreads(first: 100) {
             pageInfo { hasNextPage endCursor }
             nodes {
+              id
               isResolved
               comments(first: 100) {
                 pageInfo { hasNextPage endCursor }
@@ -129,7 +130,7 @@ When activated, execute this workflow to complete work and push:
         | select(.body != null and .body != \"\")
         | select(.state != \"DISMISSED\")
         | select((.state == \"CHANGES_REQUESTED\")
-              or (.body | test(\"Actionable comments posted: [1-9]\")))
+              or (.body | test(\"Actionable comments posted: [1-9][0-9]*\")))
         | {url, state, body: (.body[:200])}],
       pagination: {
         threads_has_next: .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage,
@@ -141,7 +142,7 @@ When activated, execute this workflow to complete work and push:
         thread_comment_cursors: [.data.repository.pullRequest.reviewThreads.nodes[]
           | select(.comments.pageInfo.hasNextPage)
           | select(.comments.nodes | length > 0)
-          | {thread_url: .comments.nodes[0].url, end_cursor: .comments.pageInfo.endCursor}]
+          | {thread_id: .id, thread_url: .comments.nodes[0].url, end_cursor: .comments.pageInfo.endCursor}]
       }
     }"
     ```
@@ -153,11 +154,11 @@ When activated, execute this workflow to complete work and push:
     reviewThreads(first: 100, after: "<threads_end_cursor>") { ... }
     reviews(first: 100, after: "<reviews_end_cursor>") { ... }
     ```
-    Per-thread `comments` pagination requires re-querying the specific thread (look up the thread node by its id, then page its `comments(first: 100, after: "<end_cursor from thread_comment_cursors>")`).
+    Per-thread `comments` pagination requires re-querying the specific thread by `thread_id` (now surfaced in `thread_comment_cursors`), then paging its `comments(first: 100, after: "<end_cursor>")` — for example via `node(id: "<thread_id>") { ... on PullRequestReviewThread { comments(first: 100, after: "<end_cursor>") { ... } } }`.
 
     **Dismissal heuristic:**
     - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
-    - Top-level review body counts as a **finding** only when `state == CHANGES_REQUESTED` OR the body matches `Actionable comments posted: [1-9]` (CodeRabbit's marker). Reviews with `state == DISMISSED` are always excluded — dismissing a CodeRabbit review keeps the "Actionable comments posted: N" text in its body, so without this filter dismissed reviews would re-trigger the gate forever. This also filters out Copilot's "Pull request overview" summaries and CodeRabbit's "Actionable comments posted: 0" runs.
+    - Top-level review body counts as a **finding** only when `state == CHANGES_REQUESTED` OR the body matches `Actionable comments posted: [1-9][0-9]*` (CodeRabbit's marker). Reviews with `state == DISMISSED` are always excluded — dismissing a CodeRabbit review keeps the "Actionable comments posted: N" text in its body, so without this filter dismissed reviews would re-trigger the gate forever. This also filters out Copilot's "Pull request overview" summaries and CodeRabbit's "Actionable comments posted: 0" runs.
 
     **c. If any unresolved findings remain, HALT** and prompt the user explicitly:
     - Print each finding: URL + first ~200 chars of body, grouped by `inline` vs `top_level`.
