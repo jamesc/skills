@@ -78,19 +78,23 @@ When activated, execute this workflow to complete work and push:
 
 12. **Bot review gate** — never proceed past this step with unresolved Copilot / CodeRabbit findings.
 
-    **a. Wait for reviews to arrive (new PRs only):**
-    For PRs created in step 9, poll every 60s for up to 10 minutes for `copilot-pull-request-reviewer[bot]` and `coderabbitai[bot]` reviews:
-    ```bash
-    gh api repos/{owner}/{repo}/pulls/{pr}/reviews \
-      --jq '[.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}]'
-    ```
-    If both still missing after 10 min, note it in the report and continue to (b). Pre-existing PRs skip the wait.
-
-    **b. Enumerate unresolved findings** — both inline threads AND top-level review bodies. Derive `OWNER`/`REPO` at runtime so the gate works in any repo:
+    Resolve `PR`, `OWNER`, `REPO` once up front so both subsections can use them:
     ```bash
     PR=$(gh pr view --json number --jq .number)
     OWNER=$(gh repo view --json owner --jq .owner.login)
     REPO=$(gh repo view --json name --jq .name)
+    ```
+
+    **a. Wait for reviews to arrive (new PRs only):**
+    For PRs created in step 9, poll every 60s for up to 10 minutes for `copilot-pull-request-reviewer[bot]` and `coderabbitai[bot]` reviews:
+    ```bash
+    gh api "repos/${OWNER}/${REPO}/pulls/${PR}/reviews" \
+      --jq '[.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}]'
+    ```
+    If both still missing after 10 min, note it in the report and continue to (b). Pre-existing PRs skip the wait.
+
+    **b. Enumerate unresolved findings** — both inline threads AND top-level review bodies:
+    ```bash
     AUTHOR=$(gh api "repos/${OWNER}/${REPO}/pulls/${PR}" --jq .user.login)
     gh api graphql -f query="
     {
@@ -115,6 +119,7 @@ When activated, execute this workflow to complete work and push:
     }" --jq "
     {
       inline: [.data.repository.pullRequest.reviewThreads.nodes[]
+        | select(.comments.nodes | length > 0)
         | select(.comments.nodes[0].author.login | test(\"copilot|coderabbit\"; \"i\"))
         | select(.isResolved | not)
         | select([.comments.nodes[].author.login] | index(\"${AUTHOR}\") | not)
@@ -135,12 +140,20 @@ When activated, execute this workflow to complete work and push:
           | .comments.pageInfo.hasNextPage] | any,
         thread_comment_cursors: [.data.repository.pullRequest.reviewThreads.nodes[]
           | select(.comments.pageInfo.hasNextPage)
+          | select(.comments.nodes | length > 0)
           | {thread_url: .comments.nodes[0].url, end_cursor: .comments.pageInfo.endCursor}]
       }
     }"
     ```
 
-    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: \"<endCursor>\"` on the relevant connection — use `threads_end_cursor` for `reviewThreads`, `reviews_end_cursor` for `reviews`, and the per-thread cursors in `thread_comment_cursors` for the inner `comments` connection — then merge the additional pages into the inline/top-level lists before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
+    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: "<endCursor>"` on the relevant connection — use `threads_end_cursor` for `reviewThreads`, `reviews_end_cursor` for `reviews`, and the per-thread cursors in `thread_comment_cursors` for the inner `comments` connection — then merge the additional pages into the inline/top-level lists before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
+
+    Concrete syntax — the cursor is an `after:` argument on the same connection field:
+    ```graphql
+    reviewThreads(first: 100, after: "<threads_end_cursor>") { ... }
+    reviews(first: 100, after: "<reviews_end_cursor>") { ... }
+    ```
+    Per-thread `comments` pagination requires re-querying the specific thread (look up the thread node by its id, then page its `comments(first: 100, after: "<end_cursor from thread_comment_cursors>")`).
 
     **Dismissal heuristic:**
     - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
