@@ -104,5 +104,6 @@ When activated, execute this workflow to systematically address all PR review co
 14. **Auto-chain to done**: If all review comments have been successfully resolved (no failures, no pending issues), automatically activate the `done` skill:
     - Inform the user that all PR comments have been addressed
     - Activate the `done` skill without waiting for user confirmation
-    
+    - The `done` skill's bot-review gate (step 12) will re-verify that no unresolved Copilot / CodeRabbit findings remain before reporting success. If something was missed here, the gate will halt there.
+
     If there are any issues or manual steps needed, report them and wait for user input instead.

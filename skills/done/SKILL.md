@@ -76,17 +76,67 @@ When activated, execute this workflow to complete work and push:
     streamlinear-cli update BT-{number} --state "In Review"
     ```
 
-12. **Wait for automated code reviews** (new PRs only — skip if PR already existed):
-    Poll every 60s for up to 10 minutes for Copilot (`copilot-pull-request-reviewer[bot]`) and CodeRabbit (`coderabbitai[bot]`) reviews:
-    ```bash
-    gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}'
-    ```
-    - **Reviews with comments** → chain to `/resolve-pr` (it handles enumerate → fix → verify → push)
-    - **Reviews with no comments** → report passed ✅
-    - **Timeout** → report which reviews arrived, continue to step 13
-    - **Pre-existing PR with unresolved threads** → chain to `/resolve-pr` directly, don't poll
+12. **Bot review gate** — never proceed past this step with unresolved Copilot / CodeRabbit findings.
 
-13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and review status for both Copilot and CodeRabbit.
+    **a. Wait for reviews to arrive (new PRs only):**
+    For PRs created in step 9, poll every 60s for up to 10 minutes for `copilot-pull-request-reviewer[bot]` and `coderabbitai[bot]` reviews:
+    ```bash
+    gh api repos/{owner}/{repo}/pulls/{pr}/reviews \
+      --jq '[.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}]'
+    ```
+    If both still missing after 10 min, note it in the report and continue to (b). Pre-existing PRs skip the wait.
+
+    **b. Enumerate unresolved findings** — both inline threads AND top-level review bodies:
+    ```bash
+    PR=$(gh pr view --json number --jq .number)
+    OWNER=jamesc; REPO=beamtalk
+    AUTHOR=$(gh api "repos/${OWNER}/${REPO}/pulls/${PR}" --jq .user.login)
+    gh api graphql -f query="
+    {
+      repository(owner: \"${OWNER}\", name: \"${REPO}\") {
+        pullRequest(number: ${PR}) {
+          reviewThreads(first: 100) {
+            nodes {
+              isResolved
+              comments(first: 50) { nodes { author { login } url body } }
+            }
+          }
+          reviews(first: 100) {
+            nodes { author { login } state body url submittedAt }
+          }
+        }
+      }
+    }" --jq "
+    {
+      inline: [.data.repository.pullRequest.reviewThreads.nodes[]
+        | select(.comments.nodes[0].author.login | test(\"copilot|coderabbit\"; \"i\"))
+        | select(.isResolved | not)
+        | select([.comments.nodes[].author.login] | index(\"${AUTHOR}\") | not)
+        | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}],
+      top_level: [.data.repository.pullRequest.reviews.nodes[]
+        | select(.author.login | test(\"copilot|coderabbit\"; \"i\"))
+        | select(.body != null and .body != \"\")
+        | select((.state == \"CHANGES_REQUESTED\")
+              or (.body | test(\"Actionable comments posted: [1-9]\")))
+        | {url, state, body: (.body[:200])}]
+    }"
+    ```
+
+    **Dismissal heuristic:**
+    - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
+    - Top-level review body counts as a **finding** only when `state == CHANGES_REQUESTED` OR the body matches `Actionable comments posted: [1-9]` (CodeRabbit's marker). This filters out Copilot's "Pull request overview" summaries and CodeRabbit's "Actionable comments posted: 0" runs, which are not findings.
+
+    **c. If any unresolved findings remain, HALT** and prompt the user explicitly:
+    - Print each finding: URL + first ~200 chars of body, grouped by `inline` vs `top_level`.
+    - Ask: "Found N unresolved bot review findings — what do you want to do?"
+      1. **Resolve** → chain to `/resolve-pr` (handles enumerate → fix → reply → resolve threads → push). This is the recommended path.
+      2. **Dismiss with reason** → reply to each thread with a justification (e.g. "out of scope, tracked in BT-XXXX") and resolve the thread, then re-run the gate.
+      3. **Override** → user types `merge anyway` (exact phrase) to proceed despite findings. Log the override in the final report.
+    - Do not proceed to step 13 without one of {resolve done, dismiss done, explicit override}.
+
+    **d. If zero unresolved findings**, report ✅ and continue.
+
+13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and the bot review gate result (passed clean / passed after resolve / overridden by user with phrase). If overridden, include the count of skipped findings so the risk is visible in the report.
 
 ## When PR is merged
 
