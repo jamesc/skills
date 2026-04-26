@@ -128,14 +128,19 @@ When activated, execute this workflow to complete work and push:
         | {url, state, body: (.body[:200])}],
       pagination: {
         threads_has_next: .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage,
+        threads_end_cursor: .data.repository.pullRequest.reviewThreads.pageInfo.endCursor,
         reviews_has_next: .data.repository.pullRequest.reviews.pageInfo.hasNextPage,
+        reviews_end_cursor: .data.repository.pullRequest.reviews.pageInfo.endCursor,
         thread_comments_has_next: [.data.repository.pullRequest.reviewThreads.nodes[]
-          | .comments.pageInfo.hasNextPage] | any
+          | .comments.pageInfo.hasNextPage] | any,
+        thread_comment_cursors: [.data.repository.pullRequest.reviewThreads.nodes[]
+          | select(.comments.pageInfo.hasNextPage)
+          | {thread_url: .comments.nodes[0].url, end_cursor: .comments.pageInfo.endCursor}]
       }
     }"
     ```
 
-    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: \"<endCursor>\"` on the relevant connection and merge the additional pages into the inline/top-level lists before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
+    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: \"<endCursor>\"` on the relevant connection — use `threads_end_cursor` for `reviewThreads`, `reviews_end_cursor` for `reviews`, and the per-thread cursors in `thread_comment_cursors` for the inner `comments` connection — then merge the additional pages into the inline/top-level lists before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
 
     **Dismissal heuristic:**
     - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
