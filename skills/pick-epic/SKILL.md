@@ -150,9 +150,13 @@ Work on <BT-NNN> using the standard skill chain: /pick-issue → /review-code �
 2. `/review-code` — multi-pass review, fix any 🔴/🟡 findings
 3. `/done` — commit, push, create PR
 
-**IMPORTANT: In /done, stop after the PR is created.** Do NOT poll for automated
-reviews (CodeRabbit, Copilot), do NOT chain to /resolve-pr. The parent agent owns
-CI watching, review handling, and merging. Just return the PR URL.
+**IMPORTANT: In /done, the bot-review gate (step 12) will wait up to 10 minutes
+for Copilot / CodeRabbit reviews and may HALT** if unresolved findings remain,
+prompting you to resolve (chain to /resolve-pr), dismiss with reason, or override
+with the literal phrase `merge anyway`. The parent agent owns CI watching, review
+handling, and merging — but expect /done to block at the gate when bots find
+something. Pick override only if you've audited the findings and accepted the
+risk; the override is logged in the final report.
 ```
 
 That's it — keep the prompt minimal. `/pick-issue` and `/done` already contain all the rules (license headers, CLAUDE.md guidelines, test commands, commit format). No need to repeat them.
