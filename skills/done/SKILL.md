@@ -122,6 +122,7 @@ When activated, execute this workflow to complete work and push:
       top_level: [.data.repository.pullRequest.reviews.nodes[]
         | select(.author.login | test(\"copilot|coderabbit\"; \"i\"))
         | select(.body != null and .body != \"\")
+        | select(.state != \"DISMISSED\")
         | select((.state == \"CHANGES_REQUESTED\")
               or (.body | test(\"Actionable comments posted: [1-9]\")))
         | {url, state, body: (.body[:200])}],
@@ -138,7 +139,7 @@ When activated, execute this workflow to complete work and push:
 
     **Dismissal heuristic:**
     - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
-    - Top-level review body counts as a **finding** only when `state == CHANGES_REQUESTED` OR the body matches `Actionable comments posted: [1-9]` (CodeRabbit's marker). This filters out Copilot's "Pull request overview" summaries and CodeRabbit's "Actionable comments posted: 0" runs, which are not findings.
+    - Top-level review body counts as a **finding** only when `state == CHANGES_REQUESTED` OR the body matches `Actionable comments posted: [1-9]` (CodeRabbit's marker). Reviews with `state == DISMISSED` are always excluded — dismissing a CodeRabbit review keeps the "Actionable comments posted: N" text in its body, so without this filter dismissed reviews would re-trigger the gate forever. This also filters out Copilot's "Pull request overview" summaries and CodeRabbit's "Actionable comments posted: 0" runs.
 
     **c. If any unresolved findings remain, HALT** and prompt the user explicitly:
     - Print each finding: URL + first ~200 chars of body, grouped by `inline` vs `top_level`.
