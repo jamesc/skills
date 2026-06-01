@@ -1,7 +1,7 @@
 ---
 name: plan-refactor
 description: Analyze the codebase and plan refactoring for code quality and maintainability. Use when user types /plan-refactor or asks to plan refactoring work.
-model: claude-opus-4-6
+model: opus
 argument-hint: "[scope: crate name, layer, or 'all']"
 allowed-tools: Bash, Read, Grep, Glob, Agent
 ---

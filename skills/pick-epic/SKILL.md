@@ -1,7 +1,7 @@
 ---
 name: pick-epic
 description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and automated reviews (CodeRabbit + Copilot) pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
-model: claude-opus-4-6
+model: opus
 argument-hint: "BT-XXX (epic ID)"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
