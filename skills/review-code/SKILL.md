@@ -1,7 +1,7 @@
 ---
 name: review-code
 description: Review current branch changes vs main. Use when user types /review-code or asks for a code review of their changes.
-model: claude-opus-4-6
+model: opus
 ---
 
 # Code Review Workflow
@@ -166,7 +166,7 @@ Use CodeRabbit AI and a different model family to challenge the design with fres
 
 16. **Launch adversarial model review** using the task tool with a model from a **different family** than your own. If you're Claude, use GPT; if you're GPT, use Claude:
 
-    Launch via `task` with `agent_type: "general-purpose"` and `model: "gpt-5.2-codex"` (or `model: "claude-opus-4.6"` if you're a GPT model):
+    Launch via `task` with `agent_type: "general-purpose"` and `model: "gpt-5.2-codex"` (or `model: "opus"` if you're a GPT model):
 
     ```
     You are a skeptical senior engineer reviewing a PR. Your job is to find

@@ -1,7 +1,7 @@
 ---
 name: update-issues
 description: Find and update Linear issues that need labels, blocking relationships, or metadata. Use when user says '/update-issues' with criteria like 'no labels', 'missing agent-ready', 'needs size', etc.
-model: claude-haiku-4-5-20251001
+model: haiku
 ---
 
 # Update Issues Automatically

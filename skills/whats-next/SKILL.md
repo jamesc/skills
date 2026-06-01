@@ -1,7 +1,7 @@
 ---
 name: whats-next
 description: Find the next logical piece of work. Use when user types /whats-next or asks what they should work on next, or wants recommendations for the next task.
-model: claude-haiku-4-5-20251001
+model: haiku
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

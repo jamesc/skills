@@ -1,7 +1,7 @@
 ---
 name: do-refactor
 description: Execute a refactoring epic on a single branch, implementing all issues sequentially with CI verification after each. Use when user types /do-refactor or asks to execute a refactoring plan.
-model: claude-opus-4-6
+model: opus
 argument-hint: "BT-XXX (epic ID)"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
