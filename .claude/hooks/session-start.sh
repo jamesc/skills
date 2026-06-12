@@ -1,10 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Install tessl CLI if not present (all environments)
-command -v tessl &>/dev/null || npm install -g tessl >/dev/null 2>&1 || true
-
-# Only run remaining setup in remote (web) environments
+# Only run setup in remote (web) environments
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
