@@ -1,6 +1,6 @@
 ---
 name: explain
-description: Create a walkthrough document for code, a pattern, or a feature. Prompts the user for walkthrough style (demo, linear, architecture, API reference, ...) and produces the appropriate document using showboat or plain markdown.
+description: Create a walkthrough document for code, a pattern, or a feature. Use when user types /explain or asks for a walkthrough or explanation of code. Prompts the user for walkthrough style (demo, linear, architecture, API reference, ...) and produces the appropriate document using showboat or plain markdown.
 argument-hint: [file, directory, or topic]
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
 ---

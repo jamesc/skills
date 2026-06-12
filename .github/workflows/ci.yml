@@ -20,70 +20,11 @@ jobs:
       - name: Validate skill and agent structure
         run: bash scripts/validate.sh
 
+      - name: Lint skills (skill-check)
+        run: npx --yes skill-check check . --no-security-scan --fail-on-warning --format github
+
       - name: Lint markdown
         run: markdownlint-cli2 "**/*.md" "#node_modules"
 
       - name: Lint shell scripts
         run: find . -name '*.sh' -not -path './node_modules/*' -print0 | xargs -0 shellcheck
-
-  tessl-lint:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Tessl CLI
-        run: npm install -g tessl
-
-      - name: Lint all skills
-        run: |
-          exit_code=0
-          for skill_dir in skills/*/; do
-            [ -d "$skill_dir" ] || continue
-            if [ ! -f "$skill_dir/tile.json" ]; then
-              echo "Skipping $skill_dir (no tile.json)"
-              continue
-            fi
-            echo "Linting $skill_dir..."
-            if ! tessl skill lint "$skill_dir"; then
-              exit_code=1
-            fi
-          done
-          exit $exit_code
-
-  tessl-review:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Tessl CLI
-        run: npm install -g tessl
-
-      - name: Review all skills
-        env:
-          TESSL_API_TOKEN: ${{ secrets.TESSL_API_TOKEN }}
-        run: |
-          exit_code=0
-          for skill_dir in skills/*/; do
-            [ -d "$skill_dir" ] || continue
-            [ -f "$skill_dir/tile.json" ] || continue
-            echo "Reviewing $skill_dir..."
-            if ! tessl skill review "$skill_dir"; then
-              exit_code=1
-            fi
-          done
-          exit $exit_code
-
-  tessl-publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: tesslio/publish@main
-        with:
-          token: ${{ secrets.TESSL_API_TOKEN }}

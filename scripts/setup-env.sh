@@ -57,16 +57,8 @@ if need_cmd markdownlint-cli2; then
   ok "markdownlint-cli2 installed"
 fi
 
-# --- tessl ---
-if need_cmd tessl; then
-  echo "    Installing tessl..."
-  npm install -g tessl
-  ok "tessl installed"
-fi
-
 echo ""
 echo "==> All CI tools installed. You can now run:"
 echo "    bash scripts/validate.sh"
 echo "    markdownlint-cli2 \"**/*.md\" \"#node_modules\""
 echo "    find . -name '*.sh' -not -path './node_modules/*' -print0 | xargs -0 shellcheck"
-echo "    tessl skill lint skills/<skill-name>/"

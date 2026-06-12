@@ -1,0 +1,8 @@
+{
+  "roots": ["."],
+  "include": ["**/skills/*/SKILL.md"],
+  "exclude": ["**/node_modules/**", "**/.git/**"],
+  "rules": {
+    "frontmatter.unknown_fields": "off"
+  }
+}
