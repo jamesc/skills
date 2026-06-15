@@ -1,14 +1,14 @@
 ---
 name: pick-epic
-description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and automated reviews (CodeRabbit + Copilot) pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
+description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and the Claude review bot (plus CodeRabbit when available) pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
 model: opus
 argument-hint: "BT-XXX (epic ID)"
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__save_issue, mcp__linear-server__save_comment
 ---
 
 # Pick Epic Workflow
 
-Execute an epic by grouping its children into **dependency-ordered waves** and running each wave as **parallel subagents**, one per issue. Each issue gets its own isolated worktree, its own PR (squash-merged to main), and is merged as soon as CI passes and automated reviews (CodeRabbit + Copilot) are satisfied. Waves are sequential — Wave N+1 starts only after all Wave N PRs are merged.
+Execute an epic by grouping its children into **dependency-ordered waves** and running each wave as **parallel subagents**, one per issue. Each issue gets its own isolated worktree, its own PR (squash-merged to main), and is merged as soon as CI passes and the **Claude review bot** (`claude[bot]`, the CI reviewer) is satisfied — plus CodeRabbit when it has reviewed. Waves are sequential — Wave N+1 starts only after all Wave N PRs are merged.
 
 **Key difference from `/do-refactor`:** This skill uses isolated worktrees and parallel subagents for maximum throughput — one PR per issue, not one PR for the whole epic. Use this for any L/XL epic where issues touch non-overlapping files.
 
@@ -18,25 +18,12 @@ Execute an epic by grouping its children into **dependency-ordered waves** and r
 
 ### 1. Load the epic and children
 
-```bash
-streamlinear-cli get BT-XXX
-```
+Load the epic with `get_issue` (id: "BT-XXX") — it accepts the `BT-XXX` shorthand directly, no UUID needed.
 
-Then fetch all child issues with their blocking relationships and sizes:
+Then fetch all child issues with their blocking relationships and sizes. This is a two-step fetch:
 
-```bash
-streamlinear-cli graphql "query {
-  issue(id: \"<epic-node-id>\") {
-    children {
-      nodes {
-        id identifier title state { name }
-        labels { nodes { name } }
-        relations { nodes { type relatedIssue { identifier state { name } } } }
-      }
-    }
-  }
-}"
-```
+1. List the children with `list_issues` (parentId: "BT-XXX") to get each child's identifier, title, and state.
+2. For each child, call `get_issue` (id: "BT-YYY") to read its labels and blocking relationships — `get_issue` returns the full labels and relationships; `list_issues` does not return full relations.
 
 ### 2. Validate and filter
 
@@ -79,19 +66,24 @@ Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for 
 - Check the PR URL returned
 - Watch CI: `gh pr view <PR> --json statusCheckRollup`
 - If CI fails: diagnose the failure, push a fix to the agent's branch
-- **Wait for automated reviews** before merging. Poll every 60s for up to 5 minutes:
-  ```bash
-  gh api repos/<owner>/<repo>/pulls/<PR>/reviews \
-    --jq '[.[] | select(.user.login | test("copilot|coderabbit"; "i")) | {user: .user.login, state}]'
-  ```
-  - **Copilot**: Wait for its review to appear. If Copilot's review body contains "usage limits" or "rate limit", skip — Copilot is unavailable this run.
-  - **CodeRabbit**: Wait for its review to appear (APPROVED or CHANGES_REQUESTED).
-  - **Timeout (5 min)**: Proceed if at least one bot reviewed. If neither appeared, note it in the merge summary but proceed.
-- **Handle Copilot comments**: Copilot reviews are always `COMMENTED` (never blocking), but their findings are valuable:
-  - Spawn a subagent (or fix directly) to address genuine bugs Copilot identified
-  - Reply to each addressed comment with the fix commit hash
-  - Skip style/nitpick suggestions — note them in the merge summary
-  - If Copilot found nothing actionable, proceed
+- **Wait for automated reviews** before merging:
+  - **Claude review bot** (the anchor): it runs as the `Claude BeamTalk Review` CI check and posts inline findings when that check finishes. Wait on the check, not a timer:
+    ```bash
+    for _ in $(seq 1 30); do   # ~15 min safety cap at 30s/iteration
+      BUCKET=$(gh pr checks <PR> --repo <owner>/<repo> --json name,bucket \
+        --jq '.[] | select(.name == "Claude BeamTalk Review") | .bucket')
+      [ -n "$BUCKET" ] && [ "$BUCKET" != "pending" ] && break
+      sleep 30
+    done
+    ```
+    If the check never appears within the cap, note it in the merge summary and proceed.
+  - **CodeRabbit**: best-effort — give it time to reply, but skip it if rate-limited or absent:
+    ```bash
+    gh api repos/<owner>/<repo>/pulls/<PR>/reviews \
+      --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | {state, body: .body[:120]}]'
+    ```
+    If its review body contains "usage limits", "rate limit", or "couldn't generate", or it hasn't posted by the time the Claude check completes, skip it and proceed.
+- **Handle Claude review bot findings**: its reviews are always `COMMENTED` (non-blocking), but the findings are the primary signal — see **Handling Claude Review Bot Findings** below.
 - **Handle CodeRabbit reviews**: If CodeRabbit requests changes:
   - Fix genuine issues introduced by the PR (scope creep, bugs)
   - Dismiss pre-existing issues with a comment: "Pre-existing code, not introduced by this PR"
@@ -111,18 +103,13 @@ Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for 
 
 ### 5. Mark Linear issues Done
 
-After each PR is merged:
-```bash
-streamlinear-cli update BT-YYY --state Done
-```
+After each PR is merged, update the child with `save_issue` (id: "BT-YYY", state: "Done").
 
 ### 6. Mark the epic Done
 
 After all waves complete:
-```bash
-streamlinear-cli update BT-XXX --state Done
-streamlinear-cli comment BT-XXX "All child issues completed in <N> waves. PRs: #P1, #P2, ..."
-```
+- Mark the epic Done with `save_issue` (id: "BT-XXX", state: "Done").
+- Post a completion comment with `save_comment` (issueId: "BT-XXX", body: "All child issues completed in <N> waves. PRs: #P1, #P2, ...").
 
 ### 7. Report to user
 
@@ -150,11 +137,11 @@ Work on <BT-NNN> using the standard skill chain: /pick-issue → /review-code �
 2. `/review-code` — multi-pass review, fix any 🔴/🟡 findings
 3. `/done` — commit, push, create PR
 
-**IMPORTANT: In /done, the bot-review gate (step 12) will wait up to 10 minutes
-for Copilot / CodeRabbit reviews and may HALT** if unresolved findings remain,
+**IMPORTANT: In /done, the bot-review gate (step 12) waits for the `Claude BeamTalk Review`
+CI check (and counts CodeRabbit if it has posted) and may HALT** if unresolved findings remain,
 prompting you to resolve (chain to /resolve-pr), dismiss with reason, or override
 with the literal phrase `merge anyway`. The parent agent owns CI watching, review
-handling, and merging — but expect /done to block at the gate when bots find
+handling, and merging — but expect /done to block at the gate when the review bot finds
 something. Pick override only if you've audited the findings and accepted the
 risk; the override is logged in the final report.
 ```
@@ -177,18 +164,22 @@ When a subagent's PR has a CI failure:
 - Windows: `String` vs `&str` when a `#[cfg(windows)]` rebind creates an owned value
 - macOS: path separator assumptions
 
-## Handling Copilot Reviews
+## Handling Claude Review Bot Findings
 
-Copilot reviews are `COMMENTED` (non-blocking) but contain valuable findings. **Do not skip them.**
+The Claude review bot (`claude[bot]`) is the CI reviewer. Its reviews are always `COMMENTED` (non-blocking), and it posts findings as **inline review threads** — judge by whether each thread is unresolved, never by review state. These are the primary review signal. **Do not skip them.**
 
-1. **Wait for Copilot's review** to appear (poll alongside CodeRabbit)
-2. **Check for rate limiting**: If the review body contains "usage limits", "rate limit", or "couldn't generate", Copilot is unavailable — skip and note in merge summary
-3. **Get inline comments**:
+1. **Confirm the review posted** — the `Claude BeamTalk Review` check has left `pending` (see step 4c).
+2. **Get its inline threads** (unresolved, authored by `claude[bot]`):
    ```bash
-   gh api repos/<owner>/<repo>/pulls/<PR>/reviews/<review-id>/comments \
-     --jq '[.[] | {id, path, body: .body[:200]}]'
+   gh api graphql -f query='{ repository(owner:"<owner>", name:"<repo>") {
+     pullRequest(number: <PR>) { reviewThreads(first:100) { nodes {
+       id isResolved comments(first:1) { nodes { author { login } url body } } } } } } }' \
+     --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+       | select(.isResolved | not)
+       | select(.comments.nodes[0].author.login | test("claude"; "i"))
+       | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}'
    ```
-4. **Evaluate each comment**:
+3. **Evaluate each finding**:
 
 | Finding type | Action |
 |---|---|
@@ -196,12 +187,13 @@ Copilot reviews are `COMMENTED` (non-blocking) but contain valuable findings. **
 | Valid improvement, small scope | Fix it inline if < 10 lines |
 | Valid improvement, large scope | Create a follow-up Linear issue, reply with issue link |
 | Pre-existing code | Reply: "Pre-existing, not introduced by this PR" |
-| False positive / style nitpick | Skip — no reply needed |
+| False positive / style nitpick | Reply briefly, then resolve the thread |
 
-5. **Reply to addressed comments**: For each comment you fixed:
+4. **Reply to and resolve each addressed thread**:
    ```bash
    gh api repos/<owner>/<repo>/pulls/<PR>/comments/<comment-id>/replies \
      -f body="Fixed in <commit-hash>"
+   gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread-id>"}) { thread { isResolved } } }'
    ```
 
 ## Handling CodeRabbit Reviews
@@ -241,5 +233,5 @@ Stop and ask the user for guidance if:
 - A subagent fails to compile after 2 fix attempts
 - An issue has genuinely ambiguous acceptance criteria
 - Two issues in the same wave have unexpected file overlap discovered mid-execution
-- CodeRabbit or Copilot raises a security finding that is not pre-existing
+- The Claude review bot or CodeRabbit raises a security finding that is not pre-existing
 - A PR has merge conflicts with main (means another PR in this wave touched the same files)

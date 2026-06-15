@@ -2,7 +2,7 @@
 name: plan-adr
 description: Break an accepted ADR into implementation issues with an Epic. Use when user types /plan-adr or asks to plan implementation of an ADR.
 argument-hint: "[ADR number or file path]"
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, mcp__linear-server__list_issues, mcp__linear-server__get_issue, mcp__linear-server__save_issue, mcp__linear-server__save_comment
 ---
 
 # Plan ADR Implementation Workflow
@@ -71,10 +71,13 @@ Take an **accepted ADR** and break it into a set of **sequenced, agent-ready Lin
    ```
 
    **Issue sizing rules:**
+   - **Use the fewest issues that are each independently landable** — don't over-split. Combine work that lands together, and fold design decisions into the implementing issue's description rather than creating a separate "design spike" issue.
    - Each issue should be **S or M** (completable in one session)
    - If an issue is **L or XL**, split it further
    - Each issue should be independently testable
    - Each issue should leave CI green when merged
+
+   (All children stay grouped under the Epic created in step 6 — that's what makes the set runnable via `/pick-epic`.)
 
 5. **Present the plan to user**: Show the breakdown before creating issues:
    ```markdown
@@ -133,18 +136,9 @@ Take an **accepted ADR** and break it into a set of **sequenced, agent-ready Lin
      - [Things explicitly NOT part of this issue]
      ```
 
-8. **Set up blocking relationships**: Use Linear GraphQL to create all dependency links:
-   ```graphql
-   mutation {
-     issueRelationCreate(input: {
-       issueId: "<blocker issue ID>"
-       relatedIssueId: "<blocked issue ID>"
-       type: blocks
-     }) { success }
-   }
-   ```
-   
-   Also link Epic to all child issues.
+8. **Set up blocking relationships**: Use `save_issue` to create all dependency links — pass `BT-XX` identifiers directly (no GraphQL, no UUIDs). On the blocker issue set `blocks: ["BT-blocked", ...]`, or on the blocked issue set `blockedBy: ["BT-blocker", ...]` (both are append-only).
+
+   Also link each child issue to the Epic by setting `parentId: "BT-XXX"` (the Epic) via `save_issue` on each child.
 
 9. **Update the ADR**: Add implementation tracking to the ADR file:
    ```markdown

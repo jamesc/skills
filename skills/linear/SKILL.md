@@ -19,7 +19,12 @@ Use the Linear MCP tools (`mcp__linear-server__*`) for all Linear interactions. 
 | List comments | `list_comments` |
 | Teams / users / statuses | `list_teams`, `list_users`, `list_issue_statuses` |
 
-Projects, milestones, and documents have the same `list_*` / `get_*` / `save_*` (or `create_*` / `update_*`) shape — check the tool list before hand-rolling GraphQL. Attachments have `create_*` / `get_*` / `delete_*`. Labels can be listed (`list_issue_labels`, `list_project_labels`) and created (`create_issue_label`), but **applying** a label to an existing issue and **creating blocking relationships** (`issueRelationCreate`) still require GraphQL mutations — see `create-issue/SKILL.md` for examples.
+Projects, milestones, and documents have the same `list_*` / `get_*` / `save_*` (or `create_*` / `update_*`) shape — check the tool list before hand-rolling anything. Attachments have `create_*` / `get_*` / `delete_*`. Labels can be listed (`list_issue_labels`, `list_project_labels`) and created (`create_issue_label`).
+
+`save_issue` handles directly — no GraphQL, no UUID lookups:
+- **Apply labels:** `labels: ["agent-ready", "Feature", …]` (label *names*, not UUIDs).
+- **Blocking relationships:** `blocks: ["BT-2"]` or `blockedBy: ["BT-1"]` (`BT-XX` identifiers; append-only). `relatedTo` for non-blocking links.
+- **State / priority / parent / assignee:** `state`, `priority` (0–4), `parentId`, `assignee` — all accept names/identifiers/`"me"`.
 
 ## Priority values
 

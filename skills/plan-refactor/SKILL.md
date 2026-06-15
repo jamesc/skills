@@ -3,7 +3,7 @@ name: plan-refactor
 description: Analyze the codebase and plan refactoring for code quality and maintainability. Use when user types /plan-refactor or asks to plan refactoring work.
 model: opus
 argument-hint: "[scope: crate name, layer, or 'all']"
-allowed-tools: Bash, Read, Grep, Glob, Agent
+allowed-tools: Bash, Read, Grep, Glob, Agent, mcp__linear-server__list_issues, mcp__linear-server__get_issue, mcp__linear-server__save_issue, mcp__linear-server__save_comment, mcp__linear-server__list_issue_labels
 ---
 
 # Plan Refactor Workflow
@@ -163,9 +163,9 @@ Perform a **whole-repo analysis** to identify refactoring opportunities that imp
 
    Group related findings into a single issue when they affect the same files or concern.
 
-8. **Create Epic if needed**: If there are 5+ related issues, create an Epic to group them:
+8. **Create an Epic for the set**: Whenever the plan produces more than one issue, group them under an Epic so the set is runnable via `/pick-epic` (a single self-contained refactor needs none):
    - Title: `Epic: [Refactoring Theme]` (e.g., "Epic: DDD Alignment for Codegen Layer")
-   - Link all child issues with blocking relationships
+   - Set each child's `parentId` to the Epic, and link children with blocking relationships where order matters
    - Add progress tracking template
 
 9. **Summary**: Present final output:

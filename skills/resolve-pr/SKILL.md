@@ -17,14 +17,15 @@ When activated, execute this workflow to systematically address all PR review co
 
    Fetch from all three sources and print a numbered list of everything found:
 
-   **Review threads** (code-level, includes CodeRabbit and Copilot): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`) and `isResolved`/`isOutdated` for each.
+   **Review threads** (code-level, includes the Claude review bot `claude[bot]` and CodeRabbit): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`) and `isResolved`/`isOutdated` for each. The Claude review bot posts findings here as inline threads (always `COMMENTED` — non-blocking, so judge by `isResolved`, never by review state).
 
-   **General PR comments** (conversation-level): Use method `get_comments`. Includes bot summary comments from CodeRabbit and Copilot.
+   **General PR comments** (conversation-level): Use method `get_comments`. Includes any CodeRabbit summary comments.
 
    **Bot reviews explicitly**: Also fetch reviews from named bots:
    ```bash
-   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("copilot|coderabbit|github-copilot"; "i")) | {id, state, user: .user.login}'
+   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("claude|coderabbit"; "i")) | {id, state, user: .user.login}'
    ```
+   (Copilot is no longer used; CodeRabbit may be absent or rate-limited — that is fine, just resolve whatever is present.)
 
    **RULE:** You MUST show the raw count from each source before saying there is nothing to do. "0 threads, 0 general comments, 0 bot reviews" is the only acceptable "nothing to do" output.
 
@@ -73,6 +74,12 @@ When activated, execute this workflow to systematically address all PR review co
    git push
    ```
 
+   **If the pre-push hook fails** (it runs full CI), decide based on *where* the failure is:
+   - **In code this change touches** → stop and fix it; do not bypass.
+   - **Clearly unrelated / environmental** (toolchain or OTP-version mismatch, or a failure in already-merged code this branch didn't touch — confirm it passes on `main`) → re-push with `git push --no-verify`, **state the exact reason in the report**, and offer to file a follow-up issue for the broken hook/toolchain.
+
+   When in doubt, treat it as related and fix it — only bypass when you can name why the failure is not yours.
+
 10. **Reply to each comment**: For every review comment that was addressed, add a reply explaining what was done:
    ```bash
    gh api repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies -f body="<explanation of fix, commit hash, any Linear issues created>"
@@ -90,10 +97,11 @@ When activated, execute this workflow to systematically address all PR review co
 
 12. **Final verification pass** — re-fetch all threads after pushing and confirm completeness:
     ```bash
-    # Re-fetch review threads and check none are still unresolved
-    gh api repos/{owner}/{repo}/pulls/{pr}/comments --jq '[.[] | {id, path, resolved: false}] | length'
-    # Re-fetch bot reviews
-    gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length'
+    # Re-fetch review threads and count any still unresolved (judge by isResolved — the
+    # Claude review bot's reviews are always COMMENTED, so CHANGES_REQUESTED would miss them)
+    gh api graphql -f query='{ repository(owner:"{owner}", name:"{repo}") {
+      pullRequest(number: {pr}) { reviewThreads(first:100) { nodes { isResolved } } } } }' \
+      --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length'
     ```
     Also re-run the GitHub MCP `get_review_comments` to confirm `isResolved: true` on every thread addressed.
 
@@ -104,6 +112,20 @@ When activated, execute this workflow to systematically address all PR review co
 14. **Auto-chain to done**: If all review comments have been successfully resolved (no failures, no pending issues), automatically activate the `done` skill:
     - Inform the user that all PR comments have been addressed
     - Activate the `done` skill without waiting for user confirmation
-    - The `done` skill's bot-review gate (step 12) will re-verify that no unresolved Copilot / CodeRabbit findings remain before reporting success. If something was missed here, the gate will halt there.
+    - The `done` skill's bot-review gate (step 12) will re-verify that no unresolved Claude review bot / CodeRabbit findings remain before reporting success. If something was missed here, the gate will halt there.
 
     If there are any issues or manual steps needed, report them and wait for user input instead.
+
+## Unrelated or flaky CI failures
+
+A red CI check on the PR is **not** automatically a review item. Before treating one as a bug to fix:
+
+1. **Is it explained by the review feedback?** If no review comment points at it and it's not in code you just changed, it's likely pre-existing or flaky — don't start "fixing" it blind.
+2. **Reproduce locally** (`just test`, or the specific failing suite). If it passes locally, the failure is environmental or flaky.
+3. **Re-run the failed job once** on the unchanged commit to test for flakiness:
+   ```bash
+   gh run rerun <run-id> --failed
+   ```
+   If the re-run goes green, it was flaky — note it in the report and move on. If it fails the same way again, treat it as real and investigate.
+
+Don't loop on re-runs: one re-run decides it. And don't fix failures in code outside this PR's scope — file a follow-up issue instead.

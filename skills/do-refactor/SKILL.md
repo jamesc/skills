@@ -3,7 +3,7 @@ name: do-refactor
 description: Execute a refactoring epic on a single branch, implementing all issues sequentially with CI verification after each. Use when user types /do-refactor or asks to execute a refactoring plan.
 model: opus
 argument-hint: "BT-XXX (epic ID)"
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__save_issue, mcp__linear-server__save_comment
 ---
 
 # Do Refactor Workflow
@@ -16,12 +16,10 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
 
 1. **Identify the epic**: Ask the user for the Epic ID (e.g., `BT-XXX`) or accept it from the command.
 
-2. **Load the epic and child issues**: Fetch the epic and all child issues from Linear:
-   ```bash
-   streamlinear-cli get BT-XXX
-   # Then fetch child issues (use graphql for parent/child relationships)
-   streamlinear-cli graphql "query { issue(id: \"<epic-uuid>\") { children { nodes { id identifier title description priority state { name } labels { nodes { name } } relations { nodes { type relatedIssue { identifier state { name } } } } } } } }"
-   ```
+2. **Load the epic and child issues**: Fetch the epic and all child issues from Linear using the Linear MCP tools (`mcp__linear-server__*`):
+   - `get_issue` (id: `"BT-XXX"`) to read the epic itself (priority, state, description).
+   - `list_issues` (parentId: `"BT-XXX"`) to enumerate the epic's child issues with their titles, priorities, states, and labels.
+   - For each child, call `get_issue` on its identifier to read its blocking relationships (`get_issue` returns relationships such as blockers; `list_issues` does not).
 
    Build an ordered list respecting dependencies (blocked issues come after their blockers). If no explicit ordering, use: high priority first, smallest first (S before M before L).
 
@@ -87,10 +85,7 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    ```
    One commit per issue (or a small group if the issue has distinct phases like "add tests" then "refactor").
 
-   **f. Complete the issue:**
-   ```bash
-   streamlinear-cli update BT-YYY --state Done
-   ```
+   **f. Complete the issue:** call `save_issue` (id: `"BT-YYY"`, state: `"Done"`).
 
    **g. Create or update the PR:**
 
@@ -133,10 +128,8 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    - Update the PR with status
    - Tell the user which issue is blocking and why
    - Mark the blocking issue as blocked in Linear:
-     ```bash
-     streamlinear-cli update BT-YYY --state "Backlog"
-     streamlinear-cli comment BT-YYY "Blocked: <explanation>"
-     ```
+     - `save_issue` (id: `"BT-YYY"`, state: `"Backlog"`)
+     - `save_comment` (issueId: `"BT-YYY"`, body: `"Blocked: <explanation>"`)
 
 8. **Final verification**: After all issues are complete:
    ```bash
@@ -174,14 +167,10 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    ```
 
 10. **Update the epic**: Mark the epic as Done (or note remaining issues):
-    ```bash
-    # If all child issues complete:
-    streamlinear-cli update BT-XXX --state Done
-
-    # If some issues remain:
-    streamlinear-cli update BT-XXX --state "In Progress"
-    streamlinear-cli comment BT-XXX "Partial completion: X/Y issues done. Remaining: BT-YYY, ..."
-    ```
+    - If all child issues complete: `save_issue` (id: `"BT-XXX"`, state: `"Done"`).
+    - If some issues remain:
+      - `save_issue` (id: `"BT-XXX"`, state: `"In Progress"`)
+      - `save_comment` (issueId: `"BT-XXX"`, body: `"Partial completion: X/Y issues done. Remaining: BT-YYY, ..."`)
 
 11. **Notify the user**: Summary of what was accomplished:
     ```markdown

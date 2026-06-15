@@ -27,18 +27,11 @@ The issue ID is determined in priority order:
    ```
    Example: `/workspaces/BT-34` → issue `BT-34`
 
-3. **Backlog query**: Query Linear for the highest priority `agent-ready` issue from the backlog that has no unresolved blockers (all blocking issues must be Done):
-   ```bash
-   streamlinear-cli search --state "Backlog" --team BT
-   # Then filter results to those with the agent-ready label and no unresolved blockers
-   ```
+3. **Backlog query**: Query Linear for the highest priority `agent-ready` issue from the backlog that has no unresolved blockers (all blocking issues must be Done). Use `list_issues` with `team: "BT"`, `state: "Backlog"`, `label: "agent-ready"`, then filter results to those with no unresolved blockers.
 
 ### 2. Fetch Issue Details
 
-Get the full issue details from Linear:
-```bash
-streamlinear-cli get BT-{number}
-```
+Get the full issue details from Linear using `get_issue` with `id: "BT-{number}"`.
 
 ### 3. Validate Issue State
 
@@ -82,10 +75,7 @@ git checkout -b BT-{number}-{slug}
 
 ### 7. Update Linear
 
-Mark the issue as "In Progress":
-```bash
-streamlinear-cli update BT-{number} --state "In Progress"
-```
+Mark the issue as "In Progress" using `save_issue` with `id: "BT-{number}"`, `state: "In Progress"`.
 
 ### 8. Create Todo List
 

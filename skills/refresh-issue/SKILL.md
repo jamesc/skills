@@ -2,7 +2,7 @@
 name: refresh-issue
 description: Refresh a Linear issue to align with current docs and code state. Use when user types /refresh-issue BT-XX or asks to refresh/sync an issue with the codebase.
 argument-hint: "BT-XX (issue ID)"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Bash, Read, Grep, Glob, mcp__linear-server__get_issue, mcp__linear-server__save_issue, mcp__linear-server__save_comment, mcp__linear-server__list_issue_labels
 ---
 
 # Refresh Issue Workflow
@@ -29,10 +29,7 @@ Use the same resolution logic as `pick-issue` step 1:
 
 ### 2. Fetch the Issue
 
-Get the full issue details from Linear:
-```bash
-streamlinear-cli get BT-XX
-```
+Get the full issue details from Linear with `get_issue` (id: `BT-XX` — accepts the `BT-XX` shorthand directly).
 
 Note the following from the issue:
 - Title and description
@@ -94,9 +91,10 @@ Based on findings, update the issue appropriately:
 
 #### If Already Fixed
 
-```bash
-streamlinear-cli update BT-XX --state Done
-streamlinear-cli comment BT-XX "## Issue Review
+Move the issue to Done with `save_issue` (id: `BT-XX`, state: `Done`), then post the review comment with `save_comment` (issueId: `BT-XX`, body: the Markdown below — use literal newlines):
+
+```markdown
+## Issue Review
 
 **Status**: Already implemented
 
@@ -105,14 +103,15 @@ streamlinear-cli comment BT-XX "## Issue Review
 - [reference specific files/lines]
 - [mention relevant tests]
 
-Marking as Done."
+Marking as Done.
 ```
 
 #### If Still Open (with updates needed)
 
-Add a comment summarising findings:
-```bash
-streamlinear-cli comment BT-XX "## Issue Review
+Add a comment summarising findings with `save_comment` (issueId: `BT-XX`, body: the Markdown below — use literal newlines):
+
+```markdown
+## Issue Review
 
 **Status**: Still open, description updated
 
@@ -127,38 +126,32 @@ streamlinear-cli comment BT-XX "## Issue Review
 - [list any changes to criteria]
 
 **Files to Modify** (updated):
-- [current list of relevant files]"
+- [current list of relevant files]
 ```
 
-If the description body needs significant updates (requires GraphQL since CLI update doesn't support body):
-```bash
-# First get the issue UUID
-streamlinear-cli get BT-XX
-# Then update body via GraphQL
-streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { description: \"[Updated description with current context, acceptance criteria, and file list]\" }) { success } }"
-```
+If the description body needs significant updates, update it with `save_issue` (id: `BT-XX`, description: `[Updated description with current context, acceptance criteria, and file list]`). The `description` is Markdown — use literal newlines, no escaping. You can combine `description` with `state` and `labels` in the same `save_issue` call.
 
 #### If Blocked
 
-```bash
-streamlinear-cli update BT-XX --state "Backlog"
-# Labels require GraphQL — get label UUIDs first, then apply keeping existing labels
-streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { labelIds: [\"<blocked-uuid>\", \"<existing-area-uuid>\", \"<existing-type-uuid>\"] }) { success } }"
-streamlinear-cli comment BT-XX "## Issue Review
+Move to Backlog and apply the blocked label in a single `save_issue` call (id: `BT-XX`, state: `Backlog`, labels: `["blocked", "<area>", "<type>"]`). Pass label *names* directly — no UUIDs and no UUID lookup. The `labels` set is the full desired label set, so include the existing area/type label names alongside `blocked`; use `list_issue_labels` (team: `BT`) if you need to discover the exact names. Then post the review comment with `save_comment` (issueId: `BT-XX`, body: the Markdown below — use literal newlines):
+
+```markdown
+## Issue Review
 
 **Status**: Blocked
 
 **Blocking Issues**:
 - BT-YY: [description of dependency]
 
-Moving to Backlog with blocked label until dependencies are resolved."
+Moving to Backlog with blocked label until dependencies are resolved.
 ```
 
 #### If Obsolete
 
-```bash
-streamlinear-cli update BT-XX --state "Canceled"
-streamlinear-cli comment BT-XX "## Issue Review
+Move the issue to Canceled with `save_issue` (id: `BT-XX`, state: `Canceled`), then post the review comment with `save_comment` (issueId: `BT-XX`, body: the Markdown below — use literal newlines):
+
+```markdown
+## Issue Review
 
 **Status**: Obsolete
 
@@ -166,7 +159,7 @@ streamlinear-cli comment BT-XX "## Issue Review
 - [explain why this is no longer needed]
 - [reference any spec changes or superseding issues]
 
-Marking as Canceled."
+Marking as Canceled.
 ```
 
 ## Comment Format
