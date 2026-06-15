@@ -2,7 +2,7 @@
 name: create-issue
 description: Create a Linear issue with proper structure and blocking relationships. Use when creating new tasks, breaking down work, or setting up dependencies between issues.
 argument-hint: "[issue title or description]"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, mcp__linear-server__save_issue, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__list_issue_labels, mcp__linear-server__save_comment
 ---
 
 # Creating Linear Issues
@@ -26,7 +26,7 @@ Every issue **must** have:
 
 | Type | Description |
 |------|-------------|
-| `Epic` | Large initiatives that group 5+ related issues (use size XL) |
+| `Epic` | Groups a set of related issues that ship together — use for **any** multi-issue set so it's runnable via `/pick-epic` (use size XL) |
 | `Feature` | A chunk of customer visible work |
 | `Bug` | Bugs, broken tests, broken code |
 | `Improvement` | Incremental work on top of a feature |
@@ -37,7 +37,7 @@ Every issue **must** have:
 | `Research` | Research projects, code spikes |
 | `Samples` | Code, examples, things to help devs get started |
 
-**Note:** Use `Epic` type only for large initiatives. Epic titles should use `Epic:` prefix (e.g., "Epic: Feature Name"). See AGENTS.md "Epics" section for full guidelines.
+**Note:** Create an `Epic` whenever work spans more than one issue (see "Breaking Work Into Multiple Issues" below) — a single self-contained issue needs none. Epic titles should use the `Epic:` prefix (e.g., "Epic: Feature Name"). See AGENTS.md "Epics" section for full guidelines.
 
 ## Item Area Labels
 
@@ -114,28 +114,30 @@ Always set one of these labels:
 | **L** | Large change, 2-3 days (significant feature, multiple files) |
 | **XL** | Extra large, consider breaking down (major feature, architectural change) |
 
-## Creating via CLI
+## Breaking Work Into Multiple Issues
 
-```bash
-streamlinear-cli create \
-  --team BT \
-  --title "Implement feature X" \
-  --body "Context:\n...\n\nAcceptance Criteria:\n- [ ] ..." \
-  --priority 3
-```
+When a request spans more than one issue, **right-size first, then group under an Epic**:
 
-After creation, add labels via GraphQL (labels require GraphQL — the CLI update command does not support labels):
+- **Use the fewest issues that are each independently landable.** Don't split work that lands together; don't mint a separate "design spike" issue when the decisions can live in the description of the issue that implements them. If you're tempted by 4–5 issues, check whether 2–3 cover it.
+- **Always wrap a multi-issue set under an `Epic`**, even for just two children. Create the Epic first (`Epic` type, size XL, `Epic:` title prefix), then create each child with `parentId` set to the Epic's `BT-XX`. This keeps the set runnable via `/pick-epic`, which executes an Epic's children in dependency-ordered waves.
+- **Still wire blocking relationships** between the children (see below) — `/pick-epic` uses them to order the waves.
+- A single, self-contained piece of work needs **no** Epic — just create the one issue.
 
-```bash
-# 1. Get label UUIDs
-streamlinear-cli graphql "query { issueLabels(first: 50) { nodes { id name } } }"
+## Creating the Issue
 
-# 2. Get the new issue's UUID
-streamlinear-cli get BT-XX
+Use the Linear MCP tools (`mcp__linear-server__*`) — see `skills/linear/SKILL.md` for the canonical conventions. Create the issue with a single `save_issue` call (no `id` means create), passing labels, priority, parent, and any blocking relationships directly:
 
-# 3. Apply labels
-streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { labelIds: [\"<agent-ready-uuid>\", \"<Feature-uuid>\", \"<area-uuid>\", \"<size-uuid>\"] }) { success } }"
-```
+`save_issue` (NO `id`):
+- `title`: `"Implement feature X"`
+- `team`: `"BT"`
+- `description`: the full body (Context, Acceptance Criteria, …)
+- `assignee`: `"me"` (current user)
+- `priority`: `3` (Medium; see priority table above)
+- `labels`: label *names* directly — e.g. `["agent-ready", "Feature", "codegen", "M"]`. No UUIDs, no lookup step.
+- `parentId`: a `BT-XX` identifier if this is a sub-task.
+- `blockedBy` / `blocks`: `BT-XX` identifiers if dependencies are known (see below).
+
+To discover or verify the available label *names*, use `list_issue_labels` (team: `"BT"`).
 
 **Labels to include:**
 - One **Agent State** label: `agent-ready`, `needs-spec`, or `blocked`
@@ -145,16 +147,16 @@ streamlinear-cli graphql "mutation { issueUpdate(id: \"<issue-uuid>\", input: { 
 
 ## Creating Blocking Relationships
 
-When issues have dependencies, **always** set up Linear's "blocks" relationships.
-First get the UUIDs of both issues via `streamlinear-cli get BT-XX`, then:
+When issues have dependencies, **always** set up Linear's "blocks" relationships. `save_issue` accepts these directly by `BT-XX` identifier — no UUID lookup, no separate mutation:
 
-```bash
-streamlinear-cli graphql "mutation { issueRelationCreate(input: { issueId: \"<blocker-uuid>\", relatedIssueId: \"<blocked-uuid>\", type: blocks }) { success } }"
-```
+- On the blocker: `save_issue` (id: `"BT-blocker"`, `blocks: ["BT-blocked"]`)
+- Or on the blocked issue: `save_issue` (id: `"BT-blocked"`, `blockedBy: ["BT-blocker"]`)
+
+When creating a new issue that is already blocked by an existing one, set `blockedBy` in the same `save_issue` create call — no follow-up step needed.
 
 ## Rules
 
-- **Always assign to `me`** — use `--assignee me` so issues go to the current user
+- **Always assign to `me`** — pass `assignee: "me"` so issues go to the current user
 - If issue A must be completed before issue B can start, then A "blocks" B
 - Always create blocking relationships when dependencies are mentioned
 - Set estimate based on complexity, not time

@@ -149,9 +149,9 @@ Zoom out from the diff. Think about how these changes interact with the rest of 
 
 ---
 
-## Pass 3: Adversarial Review (CodeRabbit + challenge assumptions)
+## Pass 3: Adversarial Review (challenge assumptions)
 
-Use CodeRabbit AI and a different model family to challenge the design with fresh eyes.
+Use a different model family — and CodeRabbit if it's available locally — to challenge the design with fresh eyes. This is a local pre-push supplement: the canonical automated reviewer is the **Claude review bot** (`claude[bot]`), which runs as the `Claude BeamTalk Review` CI check after you push and is gated in `/done`. CodeRabbit here is optional; don't depend on it.
 
 ### Steps
 

@@ -43,28 +43,17 @@ Extract what the user wants to update:
 
 ## Step 2: Search for Issues
 
-Use `streamlinear-cli` to find matching issues:
+Use the Linear MCP tools (`mcp__linear-server__*`) to find matching issues.
 
-**All open issues (or issues in a specific state):**
-```bash
-streamlinear-cli search --state "Backlog" --team BT
-streamlinear-cli search --team BT  # all open
-```
+**All open issues (or issues in a specific state):** use `list_issues`:
+- `list_issues` (team: "BT", state: "Backlog") — issues in a specific state
+- `list_issues` (team: "BT") — all open issues
 
-**Get a specific issue:**
-```bash
-streamlinear-cli get BT-21
-```
+You can also narrow with `label` and `query` filters on `list_issues`.
 
-**Issues in a number range or with complex filters (use GraphQL):**
-```bash
-streamlinear-cli graphql "query { issues(filter: { number: { gte: 21, lte: 40 }, team: { key: { eq: \"BT\" } } }) { nodes { id identifier title description labels { nodes { name id } } state { name } assignee { email } } } }"
-```
+**Get a specific issue:** use `get_issue` (id: "BT-21"). It accepts the `BT-XX` shorthand directly — no UUID needed.
 
-**Batch fetch by specific numbers:**
-```bash
-streamlinear-cli graphql "query { issues(filter: { number: { in: [308, 309, 310] }, team: { key: { eq: \"BT\" } } }) { nodes { id identifier labels { nodes { name id } } } } }"
-```
+**Issues in a number range or with complex filters:** call `list_issues` (team: "BT", state/label/query as needed) and filter the returned issues, or call `get_issue` per issue (e.g. `get_issue` (id: "BT-21"), `get_issue` (id: "BT-22"), …) for a specific set of numbers.
 
 ## Step 3: Analyze Each Issue
 
@@ -83,7 +72,7 @@ For each issue found, determine what's missing:
 
 **Issue Type:** Must have one of `Epic`, `Feature`, `Bug`, `Improvement`, `Documentation`, `Infra`, `Language Feature`, `Refactor`, `Research`, `Samples`
 
-**Note:** `Epic` label is for large initiatives grouping 5+ related issues. Most issues should use other types.
+**Note:** `Epic` is for an issue that groups a set of related children (any multi-issue set, so it's runnable via `/pick-epic`). Individual work items use the other types.
 
 **Size:** Must have one of `S`, `M`, `L`, `XL`
 
@@ -121,68 +110,48 @@ When labels are missing, infer from context:
 
 ## Step 4: Apply Updates
 
+All updates go through `save_issue`, keyed on the `BT-XX` identifier. No GraphQL, no UUID lookups.
+
 ### Updating Priority, State, Assignee
 
-Use the CLI for these fields:
-
-```bash
-streamlinear-cli update BT-123 --assignee me
-streamlinear-cli update BT-123 --priority 3
-streamlinear-cli update BT-123 --state "In Progress"
+```
+save_issue (id: "BT-123", assignee: "me")
+save_issue (id: "BT-123", priority: 3)
+save_issue (id: "BT-123", state: "In Progress")
 ```
 
-### Updating Labels (REQUIRES GraphQL)
+`assignee` accepts `"me"`, a name, or an email; `state` names are fuzzy; `priority` is 0–4 (0=None, 1=Urgent, 2=High, 3=Medium, 4=Low). Fields can be combined in a single `save_issue` call.
 
-**IMPORTANT:** The CLI `update` command does NOT support labels. You MUST use GraphQL.
+### Updating Labels
 
-#### Step 4a: Look Up Label UUIDs (once per session)
+`save_issue` applies labels directly by **name** — no UUIDs, no label-UUID lookup, no batched mutation.
 
-Query all available labels and store the ID mapping:
+#### Step 4a: Discover Valid Label Names (once per session)
 
-```bash
-streamlinear-cli graphql "query { issueLabels(first: 50) { nodes { id name } } }"
+If you need the list of valid label names to choose from, call `list_issue_labels` (team: "BT").
+
+#### Step 4b: Apply Labels per Issue
+
+Call `save_issue` once per issue with the inferred label names:
+
+```
+save_issue (id: "BT-21", labels: ["agent-ready", "Feature", "stdlib", "M"])
+save_issue (id: "BT-32", labels: ["agent-ready", "Feature", "stdlib", "S"])
 ```
 
-Store the results in a SQL table for reuse:
+Pass the full set of label names you want the issue to carry. There are no UUIDs and no per-issue UUID lookups — just the `BT-XX` identifier and label names.
 
-```sql
-CREATE TABLE label_map (name TEXT PRIMARY KEY, id TEXT);
-INSERT INTO label_map VALUES ('agent-ready', '<uuid>'), ('Bug', '<uuid>'), ...;
-```
+### Available Update Fields (via `save_issue`)
 
-#### Step 4b: Get Issue UUIDs in Bulk
-
-Query multiple issues at once to get their UUIDs and existing labels:
-
-```bash
-streamlinear-cli graphql "query { issues(filter: { number: { in: [308, 309, 310] }, team: { key: { eq: \"BT\" } } }) { nodes { id identifier labels { nodes { name id } } } } }"
-```
-
-#### Step 4c: Apply Labels via GraphQL Mutation
-
-**Preserve existing labels!** Merge inferred label IDs with existing ones.
-
-Batch up to 6 updates per mutation using aliases:
-
-```bash
-streamlinear-cli graphql "mutation { bt308: issueUpdate(id: \"<issue-uuid>\", input: { labelIds: [\"<label-uuid-1>\", \"<label-uuid-2>\", \"<label-uuid-3>\", \"<label-uuid-4>\"] }) { success issue { identifier } } bt309: issueUpdate(id: \"<issue-uuid>\", input: { labelIds: [\"<label-uuid-1>\", \"<label-uuid-2>\"] }) { success issue { identifier } } }"
-```
-
-**Key rules:**
-- `labelIds` REPLACES all labels (not additive) — always include existing label IDs
-- Batch multiple issues in one mutation using GraphQL aliases (`bt308:`, `bt309:`, etc.)
-- Maximum ~6 updates per mutation to avoid query size limits
-
-### Available Update Fields
-
-| Field | Via CLI `update` | Via GraphQL | Example |
-|-------|-----------------|-------------|---------|
-| `state` | ✅ | ✅ | `--state "Backlog"` |
-| `priority` | ✅ | ✅ | `--priority 3` |
-| `assignee` | ✅ | ✅ | `--assignee me` |
-| `labels` | ❌ | ✅ `labelIds` | Array of label UUIDs |
-| `title` | ❌ | ✅ | String |
-| `body` | ❌ | ✅ `description` | Markdown |
+| Field | Argument | Example |
+|-------|----------|---------|
+| `state` | `state` | `state: "Backlog"` |
+| `priority` | `priority` | `priority: 3` |
+| `assignee` | `assignee` | `assignee: "me"` |
+| `labels` | `labels` | `labels: ["agent-ready", "Feature"]` (names) |
+| `title` | `title` | String |
+| `body` | `description` | Markdown |
+| blocking | `blocks` / `blockedBy` | `blocks: ["BT-32"]` (BT-XX identifiers) |
 
 ## Step 5: Report Changes
 
@@ -202,26 +171,19 @@ Updated 5 issues:
 
 ### Scenario 1: `/update-issues for ones with no labels`
 
-1. **Look up label UUIDs** (once per session):
+1. **Discover valid label names** (once per session, if needed):
 
-```bash
-streamlinear-cli graphql "query { issueLabels(first: 50) { nodes { id name } } }"
-```
+   `list_issue_labels` (team: "BT")
 
-Store in SQL: `CREATE TABLE label_map (name TEXT PRIMARY KEY, id TEXT);`
+2. **Search for open issues and read their details:**
 
-2. **Search for all open issues and get details** (batch by number range):
+   `list_issues` (team: "BT") — returns identifiers, titles, descriptions, and current labels.
 
-```bash
-streamlinear-cli graphql "query { issues(filter: { number: { in: [308, 309, 310, 311, 312] }, team: { key: { eq: \"BT\" } } }) { nodes { id identifier title labels { nodes { name id } } state { name } } } }"
-```
-
-3. **Filter to issues with empty labels** — check `labels.nodes` is empty
+3. **Filter to issues with empty labels** — keep those whose label set is empty
 
 4. **For each unlabeled issue:**
    - Read title and description to infer labels
-   - Look up label UUIDs from your `label_map` table
-   - Apply via batched GraphQL mutation
+   - Apply with a single `save_issue` call using label names
 
 5. **Example: BT-21 "Implement String class core API"**
    - Has acceptance criteria → `agent-ready`
@@ -229,36 +191,27 @@ streamlinear-cli graphql "query { issues(filter: { number: { in: [308, 309, 310,
    - Title starts with "Implement" → `Feature`
    - Multiple methods → `M`
 
-```bash
-streamlinear-cli graphql "mutation { bt21: issueUpdate(id: \"<bt21-uuid>\", input: { labelIds: [\"<agent-ready-uuid>\", \"<Feature-uuid>\", \"<stdlib-uuid>\", \"<M-uuid>\"] }) { success issue { identifier } } }"
+```
+save_issue (id: "BT-21", labels: ["agent-ready", "Feature", "stdlib", "M"])
 ```
 
 ### Scenario 2: `/update-issues for missing agent-ready`
 
-1. **Get all open issues with their labels**:
-```bash
-streamlinear-cli graphql "query { issues(filter: { team: { key: { eq: \"BT\" } }, state: { name: { nin: [\"Done\", \"Canceled\"] } } }, first: 50) { nodes { id identifier title description labels { nodes { name id } } } } }"
-```
+1. **Get open issues with their labels:** `list_issues` (team: "BT"). Exclude Done/Canceled issues from the result set.
 
-2. **Filter to issues where `labels.nodes` has NO entry with name in** `[agent-ready, needs-spec, blocked, human-review, done]`
+2. **Filter to issues whose labels have NO entry in** `[agent-ready, needs-spec, blocked, human-review, done]`
 
-3. **For each, analyze and infer agent-state label**
+3. **For each, analyze and infer the agent-state label**
 
-4. **Apply via batched GraphQL mutation** — include ALL existing label IDs plus the new one
+4. **Apply with `save_issue`** (id: "BT-XX", labels: [...]) — pass the full set of label names the issue should carry, including the ones it already has plus the new agent-state label
 
 ### Scenario 3: `/update-issues for BT-21 through BT-40`
 
-1. **Get all issues in range with labels in one query:**
+1. **Get the issues in range with their labels:** call `list_issues` (team: "BT") and filter to numbers 21–40, or call `get_issue` per number (`get_issue` (id: "BT-21"), …).
 
-```bash
-streamlinear-cli graphql "query { issues(filter: { number: { gte: 21, lte: 40 }, team: { key: { eq: \"BT\" } } }) { nodes { id identifier title description labels { nodes { name id } } state { name } } } }"
-```
-
-2. **Analyze and update each one**
+2. **Analyze and update each one** with `save_issue`
 
 3. **Skip issues in Done or Canceled states**
-
-4. **Batch updates in groups of 6 per mutation**
 
 ## Label Inference Rules (Summary)
 
@@ -298,16 +251,12 @@ streamlinear-cli graphql "query { issues(filter: { number: { gte: 21, lte: 40 },
 
 If the user also mentions dependencies (e.g., "and set up blocking relationships"):
 
-1. **Get UUIDs for blocker and blocked issues:**
-```bash
-streamlinear-cli get BT-21   # note the `id` field (UUID)
-streamlinear-cli get BT-32   # note the `id` field (UUID)
-```
+`save_issue` creates relationships directly using `BT-XX` identifiers — no UUIDs, no GraphQL.
 
-2. **Create relationship:**
-```bash
-streamlinear-cli graphql "mutation { issueRelationCreate(input: { issueId: \"<blocker-uuid>\", relatedIssueId: \"<blocked-uuid>\", type: blocks }) { success } }"
-```
+- On the blocker, pass `blocks`: `save_issue` (id: "BT-21", blocks: ["BT-32"])
+- Or on the blocked issue, pass `blockedBy`: `save_issue` (id: "BT-32", blockedBy: ["BT-21"])
+
+Relationships are append-only and Linear automatically maintains the inverse side, so you only need to set one direction.
 
 ### Example: BT-21 blocks multiple issues
 
@@ -318,33 +267,35 @@ BT-21 (API definitions) blocks:
 - BT-34 (strings)
 ```
 
-For each blocked issue, get both UUIDs then create the relation.
+Set them all in one call on the blocker:
+
+```
+save_issue (id: "BT-21", blocks: ["BT-32", "BT-33", "BT-34"])
+```
 
 ## Relationship Types
 
-Linear supports these relationship types:
+`save_issue` supports these relationship arguments (all keyed on `BT-XX` identifiers):
 
-| Type | Description |
+| Argument | Description |
 |------|-------------|
 | `blocks` | This issue blocks another (dependency) |
-| `blocked_by` | This issue is blocked by another (inverse) |
-| `related` | Generic relationship |
-| `duplicate` | Mark as duplicate |
+| `blockedBy` | This issue is blocked by another (inverse) |
+| `relatedTo` | Generic, non-blocking relationship |
 
-**Note:** Use `blocks` type. Linear automatically creates the inverse `blocked_by` relationship.
+**Note:** Use `blocks` (or `blockedBy`). Linear automatically creates the inverse relationship, so set only one side.
 
 ## Tips
 
-1. **Labels REQUIRE GraphQL** — the CLI `update` command does NOT support labels
-2. **Look up label UUIDs once** per session, store in SQL `label_map` table
-3. **Get issue UUIDs in bulk** — use `issues(filter: { number: { in: [...] } })` not individual gets
-4. **`labelIds` REPLACES all labels** — always merge existing IDs with new ones
-5. **Batch mutations with aliases** — `bt308: issueUpdate(...)  bt309: issueUpdate(...)` in one call
-6. **Preserve existing labels** when updating — fetch current labels first, add to them
-7. **Use GraphQL for relationships** — CLI update doesn't support relations
+1. **`save_issue` handles labels by name** — no GraphQL, no UUIDs; pass `labels: ["agent-ready", "Feature", …]`
+2. **Discover label names with `list_issue_labels`** (team: "BT") when you need the valid set to choose from
+3. **Fetch issues with `list_issues`** (team/state/label/query filters) or `get_issue` (id: "BT-XX") for specific numbers
+4. **Pass the full label set** you want the issue to carry, including labels it already has plus any new ones
+5. **One `save_issue` per issue** — keyed on the `BT-XX` identifier; no batching or aliasing needed
+6. **Preserve existing labels** when updating — read the issue's current labels first and include them
+7. **Relationships via `save_issue`** — `blocks` / `blockedBy` / `relatedTo` accept `BT-XX` identifiers
 8. **Skip done issues** — Don't update issues in Done or Canceled states
 9. **Report clearly** — Show what changed for each issue
-10. **Max ~6 updates per mutation** — keep GraphQL query size manageable
 
 ## Workflow States
 
