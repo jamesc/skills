@@ -110,7 +110,13 @@ After each significant change, run the fast test suite:
 ```bash
 just test
 ```
-This runs unit tests (~10s). Save full CI for the final check before code review.
+This runs unit tests (~10s). Save full CI for the final check before code review. Run it synchronously and wait for it to finish — don't background it and poll.
+
+If you touched `stdlib/`, `examples/`, or other corpus-source files, run `just build-corpus`
+and commit the regenerated `crates/beamtalk-examples/corpus.json` in the same commit —
+`just ci`'s `check-corpus` step fails otherwise, and it's cheaper to catch now than at the
+pre-push hook. The same applies if an unrelated-looking test/build failure shows up:
+`just build-corpus` is cheap, so rule out a stale corpus before treating it as a code bug.
 
 ### 12. Commit Often
 
@@ -125,11 +131,16 @@ Push after each commit to keep the remote updated.
 
 ### 14. Run Full CI
 
-Before completing, run the full CI suite to catch any issues:
+Before completing, run the local CI checks:
 ```bash
-just ci
+just ci-changed
 ```
-This runs all CI checks (build, clippy, fmt-check, test, test-e2e). Fix any failures before proceeding.
+This always runs build/lint/test/check-corpus/check-surface-drift, and additionally
+runs `test-integration`/`test-mcp`/`test-repl-protocol`/`test-parity` only if the diff
+touches the workspace/REPL/MCP/parity surface — those suites are otherwise redundant
+to run locally, since GitHub Actions runs them as their own parallel CI jobs regardless.
+Fix any failures before proceeding. Use `just ci` instead if you want the full suite
+unconditionally (e.g. touching shared infra you're not sure is covered by the path check).
 
 ### 15. Auto-chain: resolve → review → done
 

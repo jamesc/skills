@@ -58,9 +58,14 @@ For each wave:
 
 **4a. Launch one subagent per issue in the wave (all in parallel):**
 
+Before launching, write the **agent ledger** for this wave (a simple table, kept in your own report/scratch notes — not a file the subagents share): `issue | worktree path | branch | agent id/name | status`. Populate it as each agent starts. Verify before launch:
+- No issue appears twice (no two agents assigned to the same issue).
+- No two agents share a worktree path.
+- Each planned worktree path is not already in use by a leftover worktree from a prior run (`git worktree list`) — remove stale ones first.
+
 Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for every issue in the wave simultaneously. Each agent receives a complete self-contained prompt (see **Agent Prompt Template** below).
 
-**4b. Wait for all agents in the wave to complete.**
+**4b. Wait for all agents in the wave to complete.** Update the ledger's `status` column as each agent finishes (done / failed / needs-fix) — use the ledger, not memory, to track what's left in the wave. If an agent's returned worktree path or branch doesn't match its ledger entry, stop and reconcile before continuing (see **When to Stop and Ask**).
 
 **4c. For each completed agent:**
 - Check the PR URL returned
@@ -144,6 +149,14 @@ with the literal phrase `merge anyway`. The parent agent owns CI watching, revie
 handling, and merging — but expect /done to block at the gate when the review bot finds
 something. Pick override only if you've audited the findings and accepted the
 risk; the override is logged in the final report.
+
+**Confinement and sync-only rules — this run is one of several parallel agents:**
+- All work stays inside your assigned worktree. Never `cd` out of it, never edit files
+  in the main checkout or another agent's worktree, and never touch the shared stash.
+- Run `just test` / `just ci` / builds synchronously and wait for them to finish.
+  Do not background a build or test command and then poll it in a loop — that just
+  burns turns. If a command is genuinely long-running, use the harness's own
+  background/notify support instead of a manual sleep-and-poll loop.
 ```
 
 That's it — keep the prompt minimal. `/pick-issue` and `/done` already contain all the rules (license headers, CLAUDE.md guidelines, test commands, commit format). No need to repeat them.
@@ -235,3 +248,6 @@ Stop and ask the user for guidance if:
 - Two issues in the same wave have unexpected file overlap discovered mid-execution
 - The Claude review bot or CodeRabbit raises a security finding that is not pre-existing
 - A PR has merge conflicts with main (means another PR in this wave touched the same files)
+- The agent ledger shows two agents mapped to the same issue, an agent's returned
+  worktree/branch doesn't match its ledger entry, or evidence that an agent wrote
+  outside its assigned worktree (e.g. unexpected diffs in the main checkout)
