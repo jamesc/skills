@@ -112,15 +112,11 @@ just test
 ```
 This runs unit tests (~10s). Save full CI for the final check before code review. Run it synchronously and wait for it to finish — don't background it and poll.
 
-If a test or build failure looks unrelated to your change, rule out stale generated
-artifacts before treating it as a code bug: `just build-corpus` (regenerates
-`crates/beamtalk-examples/corpus.json`) and a clean rebuild are cheap; re-run the
-failing check after.
-
-If you touched `stdlib/`, `examples/`, or other corpus-source files, run
-`just build-corpus` and commit the regenerated `corpus.json` in the same commit —
-`just ci`'s `check-corpus` step fails otherwise, and it's cheaper to catch now than
-at the pre-push hook.
+If you touched `stdlib/`, `examples/`, or other corpus-source files, run `just build-corpus`
+and commit the regenerated `crates/beamtalk-examples/corpus.json` in the same commit —
+`just ci`'s `check-corpus` step fails otherwise, and it's cheaper to catch now than at the
+pre-push hook. The same applies if an unrelated-looking test/build failure shows up:
+`just build-corpus` is cheap, so rule out a stale corpus before treating it as a code bug.
 
 ### 12. Commit Often
 

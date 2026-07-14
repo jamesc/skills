@@ -157,10 +157,6 @@ risk; the override is logged in the final report.
   Do not background a build or test command and then poll it in a loop — that just
   burns turns. If a command is genuinely long-running, use the harness's own
   background/notify support instead of a manual sleep-and-poll loop.
-- If stdlib, examples, or other corpus-source files changed, run `just build-corpus`
-  and include the regenerated `crates/beamtalk-examples/corpus.json` in your commit —
-  `just ci` will fail on `check-corpus` otherwise, and catching it now avoids a
-  fix-and-repush cycle later.
 ```
 
 That's it — keep the prompt minimal. `/pick-issue` and `/done` already contain all the rules (license headers, CLAUDE.md guidelines, test commands, commit format). No need to repeat them.
