@@ -135,11 +135,16 @@ Push after each commit to keep the remote updated.
 
 ### 14. Run Full CI
 
-Before completing, run the full CI suite to catch any issues:
+Before completing, run the local CI checks:
 ```bash
-just ci
+just ci-changed
 ```
-This runs all CI checks (build, clippy, fmt-check, test, test-e2e). Fix any failures before proceeding.
+This always runs build/lint/test/check-corpus/check-surface-drift, and additionally
+runs `test-integration`/`test-mcp`/`test-repl-protocol`/`test-parity` only if the diff
+touches the workspace/REPL/MCP/parity surface — those suites are otherwise redundant
+to run locally, since GitHub Actions runs them as their own parallel CI jobs regardless.
+Fix any failures before proceeding. Use `just ci` instead if you want the full suite
+unconditionally (e.g. touching shared infra you're not sure is covered by the path check).
 
 ### 15. Auto-chain: resolve → review → done
 
