@@ -27,6 +27,11 @@ When activated, execute this workflow to complete work and push:
    If all changed files (staged + committed vs main) are docs/config (`.md`, `.json`, `.yaml`, `.toml`, etc.), skip CI.
    Otherwise run: `just build && just clippy && just fmt-check`. Stop on failure.
 
+   If any changed files are under `stdlib/`, `examples/`, or other corpus-source paths,
+   also run `just build-corpus` and stage the regenerated `crates/beamtalk-examples/corpus.json`
+   if it changed — this is exactly what `just ci`'s `check-corpus` step (and the pre-push hook)
+   would otherwise catch, but catching it here avoids a fix-and-repush cycle after step 8.
+
 6. **Generate commit message**: Based on the staged diff (`git diff --cached`), create a conventional commit message:
    - Use format: `type: short description BT-{number}` (include issue ID when available)
    - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`

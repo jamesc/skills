@@ -110,7 +110,17 @@ After each significant change, run the fast test suite:
 ```bash
 just test
 ```
-This runs unit tests (~10s). Save full CI for the final check before code review.
+This runs unit tests (~10s). Save full CI for the final check before code review. Run it synchronously and wait for it to finish — don't background it and poll.
+
+If a test or build failure looks unrelated to your change, rule out stale generated
+artifacts before treating it as a code bug: `just build-corpus` (regenerates
+`crates/beamtalk-examples/corpus.json`) and a clean rebuild are cheap; re-run the
+failing check after.
+
+If you touched `stdlib/`, `examples/`, or other corpus-source files, run
+`just build-corpus` and commit the regenerated `corpus.json` in the same commit —
+`just ci`'s `check-corpus` step fails otherwise, and it's cheaper to catch now than
+at the pre-push hook.
 
 ### 12. Commit Often
 
