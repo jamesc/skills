@@ -57,6 +57,8 @@ Research a problem, explore trade-offs, and draft an **Architecture Decision Rec
    - What doesn't translate to Beamtalk/BEAM?
    - What can we steal/adapt?
 
+   **e. Which existing single-source-of-truth modules does this touch?** Before proposing a new helper, table, or vocabulary, grep for whether one already exists (a shared-kernel module, a canonical resolver, a generated artifact) that this decision should extend or route through rather than duplicate. If the decision spans a language boundary (Rust ↔ Erlang), identify what conformance mechanism (shared fixture, codegen) will keep the two sides honest — see `docs/development/architecture-principles.md` § Duplication & the Shared-Leaf-Module Pattern and § Consistency-Test Disposition Rule. Note the answer in the ADR's Decision or Consequences section so implementers don't have to re-derive it.
+
 3. **User perspective analysis**: Evaluate the decision from each user persona's viewpoint:
    
    **a. Newcomer** (learning Beamtalk, coming from Python/JS/Ruby):

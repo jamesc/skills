@@ -45,6 +45,8 @@ Take an **accepted ADR** and break it into a set of **sequenced, agent-ready Lin
    - Runtime support before codegen (codegen needs runtime functions to call)
    - Core feature before REPL integration
 
+   **d. Which existing single-source-of-truth modules does this touch?** — for each affected layer, grep whether a canonical helper/table/resolver already exists there before an issue proposes adding a new one. If implementation will legitimately need parallel logic on both sides of the Rust/Erlang boundary (e.g. a vocabulary or naming convention both sides must agree on), the issue that introduces it must also add the conformance mechanism (a shared fixture, codegen, or a generated artifact) — not a "keep in sync" comment. Note this in the relevant issue's Context/Acceptance Criteria so it isn't dropped during implementation — see `docs/development/architecture-principles.md` § Duplication & the Shared-Leaf-Module Pattern and § Consistency-Test Disposition Rule.
+
 3. **Check for existing issues**: Search Linear for issues already tracking this ADR:
    ```
    Search Linear for: ADR NNNN or the ADR title
@@ -182,6 +184,7 @@ Every issue must be `agent-ready` — an agent should be able to pick it up with
 - [ ] **Dependencies** are explicit and linked in Linear
 - [ ] **Out of scope** prevents scope creep
 - [ ] **Size is S or M** — if larger, split it
+- [ ] **No new duplicate implementation**: if this issue adds a helper/table/vocabulary, its acceptance criteria say which existing single-source-of-truth module it extends or delegates to (per step 2d) — and, if it crosses the Rust/Erlang boundary, what conformance fixture keeps both sides honest
 
 ### Phasing Principles
 
