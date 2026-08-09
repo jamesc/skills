@@ -84,6 +84,7 @@ The fast pass — read the diff line by line, catch surface issues.
    - Is the bounded context documented in the module header?
    - If a new domain concept is introduced, is it added to the DDD model doc?
    - Are dependency directions correct (core never imports cli/lsp)?
+   - **Duplication check**: did this change introduce a second implementation of an existing rule, or an unenforced "keep in sync"/"mirrors" comment? Grep for the same logic elsewhere before accepting a new helper/list/table as novel — "the shared module sits below this one" is not a reason to duplicate; the fix is to move the shared piece down, not copy it up. Any comment claiming two things are kept in sync by hand needs a test that actually enforces it (a shared conformance fixture for a cross-language pair, a golden test, or a direct call instead of a re-implementation) — see `docs/development/architecture-principles.md` § Duplication & the Shared-Leaf-Module Pattern and § Consistency-Test Disposition Rule.
 
 5. **Test coverage check**:
    - Are there new tests needed for these changes?
@@ -268,6 +269,7 @@ Use a different model family — and CodeRabbit if it's available locally — to
 
 Follow `CLAUDE.md` Essential Rules, `docs/agents/expanded.md`, and `docs/development/architecture-principles.md`. Key checks:
 - DDD compliance: domain terms, bounded context headers, dependency direction (`docs/beamtalk-ddd-model.md`)
+- No duplicate implementations: a second copy of an existing rule, or a "keep in sync" comment with no enforcing test (`docs/development/architecture-principles.md` § Duplication & the Shared-Leaf-Module Pattern, § Consistency-Test Disposition Rule)
 - Erlang: `#beamtalk_error{}` records, OTP logger, `-spec` declarations, license headers
 - Rust: clippy `-D warnings`, no `unwrap()` on user input, `Document`/`docvec!` for codegen
 - Beamtalk: verify syntax in codebase before using, implicit returns, `::` annotations
