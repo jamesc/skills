@@ -84,9 +84,7 @@ When activated, execute this workflow to complete work and push:
     The CI reviewer is the **Claude review bot** (`claude[bot]`), which runs as the
     **`Claude BeamTalk Review`** CI workflow and posts its findings as inline review threads,
     always `state: COMMENTED` (non-blocking) — so this gate keys off *unresolved threads*, never
-    review state. **CodeRabbit** (`coderabbitai[bot]`) also reviews when available: give it time
-    to reply, but if it is rate-limited or never shows up, skip it and keep going. (Copilot is no
-    longer used.)
+    review state.
 
     Resolve `PR`, `OWNER`, `REPO` once up front so both subsections can use them:
     ```bash
@@ -107,15 +105,11 @@ When activated, execute this workflow to complete work and push:
     done
     ```
     - When the check completes, `claude[bot]`'s inline threads are posted and ready to enumerate in (b). If the check never appears within the cap, note it in the report and continue to (b).
-    - **CodeRabbit** is best-effort. Check whether it has posted, and skip it if unavailable:
-      ```bash
-      gh api "repos/${OWNER}/${REPO}/pulls/${PR}/reviews" \
-        --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | {state, body: .body[:120]}]'
-      ```
-      If its review body contains "rate limit", "usage limits", or "couldn't generate", or it simply hasn't posted, skip it and keep going.
     - Pre-existing PRs skip the wait.
 
-    **b. Enumerate unresolved findings** — both inline threads AND top-level review bodies:
+    **b. Enumerate unresolved findings** — the Claude review bot posts findings as inline
+    threads only (its review bodies are empty and always `COMMENTED`), so top-level review
+    state is never the signal — judge by unresolved threads:
     ```bash
     AUTHOR=$(gh api "repos/${OWNER}/${REPO}/pulls/${PR}" --jq .user.login)
     gh api graphql -f query="
@@ -133,32 +127,19 @@ When activated, execute this workflow to complete work and push:
               }
             }
           }
-          reviews(first: 100) {
-            pageInfo { hasNextPage endCursor }
-            nodes { author { login } state body url submittedAt }
-          }
         }
       }
     }" --jq "
     {
       inline: [.data.repository.pullRequest.reviewThreads.nodes[]
         | select(.comments.nodes | length > 0)
-        | select(.comments.nodes[0].author.login | test(\"claude|coderabbit\"; \"i\"))
+        | select(.comments.nodes[0].author.login | test(\"claude\"; \"i\"))
         | select(.isResolved | not)
         | select([.comments.nodes[].author.login] | index(\"${AUTHOR}\") | not)
         | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}],
-      top_level: [.data.repository.pullRequest.reviews.nodes[]
-        | select(.author.login | test(\"claude|coderabbit\"; \"i\"))
-        | select(.body != null and .body != \"\")
-        | select(.state != \"DISMISSED\")
-        | select((.state == \"CHANGES_REQUESTED\")
-              or (.body | test(\"Actionable comments posted: [1-9][0-9]*\")))
-        | {url, state, body: (.body[:200])}],
       pagination: {
         threads_has_next: .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage,
         threads_end_cursor: .data.repository.pullRequest.reviewThreads.pageInfo.endCursor,
-        reviews_has_next: .data.repository.pullRequest.reviews.pageInfo.hasNextPage,
-        reviews_end_cursor: .data.repository.pullRequest.reviews.pageInfo.endCursor,
         thread_comments_has_next: [.data.repository.pullRequest.reviewThreads.nodes[]
           | .comments.pageInfo.hasNextPage] | any,
         thread_comment_cursors: [.data.repository.pullRequest.reviewThreads.nodes[]
@@ -169,22 +150,19 @@ When activated, execute this workflow to complete work and push:
     }"
     ```
 
-    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: "<endCursor>"` on the relevant connection — use `threads_end_cursor` for `reviewThreads`, `reviews_end_cursor` for `reviews`, and the per-thread cursors in `thread_comment_cursors` for the inner `comments` connection — then merge the additional pages into the inline/top-level lists before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
+    **Pagination:** If any `pagination.*_has_next` is `true`, re-issue the GraphQL query with `after: "<endCursor>"` on the relevant connection — use `threads_end_cursor` for `reviewThreads`, and the per-thread cursors in `thread_comment_cursors` for the inner `comments` connection — then merge the additional pages into the inline list before deciding the gate. Skipping pagination would silently ignore findings on large PRs.
 
     Concrete syntax — the cursor is an `after:` argument on the same connection field:
     ```graphql
     reviewThreads(first: 100, after: "<threads_end_cursor>") { ... }
-    reviews(first: 100, after: "<reviews_end_cursor>") { ... }
     ```
     Per-thread `comments` pagination requires re-querying the specific thread by `thread_id` (now surfaced in `thread_comment_cursors`), then paging its `comments(first: 100, after: "<end_cursor>")` — for example via `node(id: "<thread_id>") { ... on PullRequestReviewThread { comments(first: 100, after: "<end_cursor>") { ... } } }`.
 
     **Dismissal heuristic:**
     - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
-    - The Claude review bot posts findings as inline threads only (its review bodies are empty and `COMMENTED`), so it surfaces under `inline`, not `top_level` — never wait for a `CHANGES_REQUESTED` state from it.
-    - A top-level review body counts as a **finding** only when `state == CHANGES_REQUESTED` OR the body matches `Actionable comments posted: [1-9][0-9]*` (CodeRabbit's marker). Reviews with `state == DISMISSED` are always excluded — dismissing a CodeRabbit review keeps the "Actionable comments posted: N" text in its body, so without this filter dismissed reviews would re-trigger the gate forever. This also filters out CodeRabbit's "Actionable comments posted: 0" runs.
 
     **c. If any unresolved findings remain, HALT** and prompt the user explicitly:
-    - Print each finding: URL + first ~200 chars of body, grouped by `inline` vs `top_level`.
+    - Print each finding: URL + first ~200 chars of body.
     - Ask: "Found N unresolved bot review findings — what do you want to do?"
       1. **Resolve** → chain to `/resolve-pr` (handles enumerate → fix → reply → resolve threads → push). This is the recommended path.
       2. **Dismiss with reason** → reply to each thread with a justification (e.g. "out of scope, tracked in BT-XXXX") and resolve the thread, then re-run the gate.

@@ -152,22 +152,13 @@ Zoom out from the diff. Think about how these changes interact with the rest of 
 
 ## Pass 3: Adversarial Review (challenge assumptions)
 
-Use a different model family — and CodeRabbit if it's available locally — to challenge the design with fresh eyes. This is a local pre-push supplement: the canonical automated reviewer is the **Claude review bot** (`claude[bot]`), which runs as the `Claude BeamTalk Review` CI check after you push and is gated in `/done`. CodeRabbit here is optional; don't depend on it.
+Use a fresh Claude subagent to challenge the design with adversarial eyes. This is a local pre-push supplement: the canonical automated reviewer is the **Claude review bot** (`claude[bot]`), which runs as the `Claude BeamTalk Review` CI check after you push and is gated in `/done`.
 
 ### Steps
 
-15. **Run CodeRabbit review** (if the `coderabbit:review` plugin is installed):
+15. **Launch adversarial model review** using the Agent tool with a fresh, context-free subagent — it hasn't seen the implementation discussion, so it can push back without anchoring on your reasoning. Default coding model is Sonnet 5; use `model: "opus"` for this pass so the review comes from a different tier, not just a fresh context:
 
-    Invoke the `/coderabbit:review` skill with `committed --base main`:
-    ```
-    /coderabbit:review committed --base main
-    ```
-
-    This runs the CodeRabbit CLI locally against committed changes and produces findings grouped by severity.
-
-16. **Launch adversarial model review** using the task tool with a model from a **different family** than your own. If you're Claude, use GPT; if you're GPT, use Claude:
-
-    Launch via `task` with `agent_type: "general-purpose"` and `model: "gpt-5.2-codex"` (or `model: "opus"` if you're a GPT model):
+    Launch via `Agent` with `subagent_type: "general-purpose"` and `model: "opus"`:
 
     ```
     You are a skeptical senior engineer reviewing a PR. Your job is to find
@@ -186,21 +177,21 @@ Use a different model family — and CodeRabbit if it's available locally — to
     ONLY flag issues that could cause bugs, data loss, or significant maintenance burden.
     ```
 
-17. **REPL verification** (for user-facing changes only — skip for infra-only):
+16. **REPL verification** (for user-facing changes only — skip for infra-only):
     - Start REPL: `beamtalk repl`
     - Load relevant fixtures: `:load examples/counter.bt`
     - Test the specific changes interactively
     - Verify error messages are helpful and actionable
     - Document the REPL session in the summary
 
-18. **Triage findings** from CodeRabbit and the adversarial review. For each:
+17. **Triage findings** from the adversarial review. For each:
     - **Valid and fixable now** → implement the fix
     - **Security issue, can't fix now** → create Linear issue with `Bug` label + urgent priority. **Never drop security findings.**
     - **Valid but out of scope** → create Linear issue
     - **Theoretical, unlikely in practice** → note but don't act
     - **Wrong / already handled** → dismiss with explanation
 
-19. **Final CI run** if any changes were made in Pass 3:
+18. **Final CI run** if any changes were made in Pass 3:
     ```bash
     just ci
     ```
@@ -210,12 +201,12 @@ Use a different model family — and CodeRabbit if it's available locally — to
 
 ## Summary
 
-20. **Create follow-up issues**: Anything found during review that isn't fixed in this PR **must** get a Linear issue — findings should never be just "noted" and forgotten.
+19. **Create follow-up issues**: Anything found during review that isn't fixed in this PR **must** get a Linear issue — findings should never be just "noted" and forgotten.
 
     **Always create an issue for:**
     - 🔴 **Security findings not fixed now** — label `Bug` + `urgent priority`. Never let security issues be silently dropped.
     - 🟡 **Valid concerns deferred** — out-of-scope improvements, performance concerns with evidence, architectural suggestions
-    - 🔵 **Adversarial/CodeRabbit findings worth tracking** — assumptions that could break, scaling concerns, missing test scenarios
+    - 🔵 **Adversarial findings worth tracking** — assumptions that could break, scaling concerns, missing test scenarios
 
     **Don't create issues for:**
     - Theoretical concerns with no plausible trigger
@@ -223,7 +214,7 @@ Use a different model family — and CodeRabbit if it's available locally — to
 
     **The bar for "fix it now" is still high** — prefer implementing over deferring. But if you defer, track it.
 
-21. **Final summary**:
+20. **Final summary**:
 
 ```markdown
 ## Code Review Summary
