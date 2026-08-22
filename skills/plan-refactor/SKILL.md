@@ -214,7 +214,11 @@ Every refactoring issue MUST include these constraints:
 
 ### Size Estimation
 
-| Size | Scope | Example |
+Sizes are still the canonical time-based S/M/L/XL from `create-issue`'s "Size Estimates" table
+— refactor issues just have an unusually reliable proxy for that estimate (file/line count),
+since "prove the problem" (above) already requires a churn/size number:
+
+| Size | Scope (proxy for effort) | Example |
 |------|-------|---------|
 | **S** | 1-2 files, <50 lines changed | Extract a helper function, add missing error context |
 | **M** | 3-5 files, 50-200 lines | Split a module, consolidate duplicated logic |

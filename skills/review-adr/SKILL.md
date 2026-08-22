@@ -182,11 +182,13 @@ For issues found in Pass 2:
 
 ## Pass 3: Adversarial Review
 
-Challenge the decision from outside the author's perspective. Use a **different model family** for fresh eyes.
+Challenge the decision from outside the author's perspective. Use a fresh, context-free subagent for adversarial eyes.
 
 ### 3a. Launch Adversarial Review
 
-Use the `task` tool with `agent_type: "general-purpose"` and a different model family:
+Use the `Agent` tool with `subagent_type: "general-purpose"` and `model: "opus"` — a fresh
+subagent hasn't seen the drafting discussion, and Opus gives a different tier of judgment
+than the Sonnet 5 coding default:
 
 ```
 You are a skeptical principal architect reviewing an ADR. Your job is to find

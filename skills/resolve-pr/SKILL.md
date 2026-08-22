@@ -11,7 +11,7 @@ When activated, execute this workflow to systematically address all PR review co
 
 ## Steps
 
-1. **Determine Issue ID** per pick-issue step 1 (branch name → worktree name → ask user).
+1. **Determine Issue ID**: resolve in priority order — (1) current branch name matching `BT-{number}-*`, (2) git worktree directory name matching `BT-{number}`, (3) ask the user. (This is its own resolution order, not `pick-issue`'s step 1 — that skill additionally falls back to a Linear backlog query, which doesn't apply here since `/resolve-pr` always operates on an existing PR's branch.)
 
 2. **Enumerate ALL unresolved threads — never declare "no comments" without evidence**:
 

@@ -100,10 +100,16 @@ References:
 
 ## Agent-State Labels
 
-Always set one of these labels:
+At creation time, always set one of these three:
 - `agent-ready` - Fully specified, all acceptance criteria clear, agent can start immediately
 - `needs-spec` - Requires human clarification before work can start
 - `blocked` - Waiting on external dependency or another issue
+
+Two more values exist in the label set but are applied later in the issue's lifecycle, not at
+creation — don't set them here, but recognize them as valid when reading existing issues (e.g.
+in `/update-issues`, `/whats-next`):
+- `human-review` - Work is complete but needs a human decision before it can be marked `agent-ready` again or closed
+- `done` - Applied by `/done` alongside the `Done` state, once the PR is merged
 
 ## Size Estimates (T-Shirt Sizing)
 

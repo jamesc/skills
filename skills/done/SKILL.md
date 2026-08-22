@@ -11,7 +11,7 @@ When activated, execute this workflow to complete work and push:
 
 ## Steps
 
-1. **Determine Issue ID** per pick-issue step 1 (branch name → worktree name → ask user).
+1. **Determine Issue ID**: resolve in priority order — (1) current branch name matching `BT-{number}-*`, (2) git worktree directory name matching `BT-{number}`, (3) ask the user. (This is its own resolution order, not `pick-issue`'s step 1 — that skill additionally falls back to a Linear backlog query, which doesn't apply here since `/done` always operates on work already in progress on a known branch.)
    If branch starts with `chore/`, `docs/`, or `refactor/` with no `BT-` prefix, treat as standalone — skip steps 10-11 (Linear updates) and omit issue ID from commit/PR.
 
 2. **Check branch**: Verify we're NOT on `main` branch. If on main, stop and tell the user to create a feature branch first.
@@ -23,9 +23,16 @@ When activated, execute this workflow to complete work and push:
 
 4. **Check for changes**: Run `git status`. If there's nothing to commit, inform the user and stop.
 
-5. **Run static checks** (skip for doc/config-only changes):
-   If all changed files (staged + committed vs main) are docs/config (`.md`, `.json`, `.yaml`, `.toml`, etc.), skip CI.
+5. **Run static checks and tests** (skip entirely for doc/config-only changes):
+   If all changed files (staged + committed vs main) are docs/config (`.md`, `.json`, `.yaml`, `.toml`, etc.), skip this step.
    Otherwise run: `just build && just clippy && just fmt-check`. Stop on failure.
+
+   **Tests:** run `just test` — unless `just test`/`just ci`/`just ci-changed` already ran
+   clean earlier in this session against the exact same changes, with no files touched since
+   (e.g. `/pick-issue` step 14 or `/review-code` Pass 3 already ran it right before chaining
+   here). If anything changed since that run — including review-driven fixes — re-run `just
+   test`. When unsure whether it's stale, run it; a redundant ~10s run is cheaper than a broken
+   push.
 
    If any changed files are under `stdlib/`, `examples/`, or other corpus-source paths,
    also run `just build-corpus` and stage the regenerated `crates/beamtalk-examples/corpus.json`
@@ -111,7 +118,6 @@ When activated, execute this workflow to complete work and push:
     threads only (its review bodies are empty and always `COMMENTED`), so top-level review
     state is never the signal — judge by unresolved threads:
     ```bash
-    AUTHOR=$(gh api "repos/${OWNER}/${REPO}/pulls/${PR}" --jq .user.login)
     gh api graphql -f query="
     {
       repository(owner: \"${OWNER}\", name: \"${REPO}\") {
@@ -135,7 +141,6 @@ When activated, execute this workflow to complete work and push:
         | select(.comments.nodes | length > 0)
         | select(.comments.nodes[0].author.login | test(\"claude\"; \"i\"))
         | select(.isResolved | not)
-        | select([.comments.nodes[].author.login] | index(\"${AUTHOR}\") | not)
         | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}],
       pagination: {
         threads_has_next: .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage,
@@ -158,8 +163,10 @@ When activated, execute this workflow to complete work and push:
     ```
     Per-thread `comments` pagination requires re-querying the specific thread by `thread_id` (now surfaced in `thread_comment_cursors`), then paging its `comments(first: 100, after: "<end_cursor>")` — for example via `node(id: "<thread_id>") { ... on PullRequestReviewThread { comments(first: 100, after: "<end_cursor>") { ... } } }`.
 
-    **Dismissal heuristic:**
-    - Inline thread is **resolved** if `isResolved: true` (marked resolved in UI) OR the PR author (`${AUTHOR}`) has replied anywhere in the thread. Any reply counts — even "wontfix" or "out of scope".
+    **Resolution rule:** an inline thread only counts as resolved when `isResolved: true` — a
+    reply alone does not close it. This matches `/resolve-pr` and `/pick-epic`, which both call
+    the `resolveReviewThread` mutation after replying, and matches step (c).2 below, which
+    requires resolving the thread even when dismissing with a reason.
 
     **c. If any unresolved findings remain, HALT** and prompt the user explicitly:
     - Print each finding: URL + first ~200 chars of body.

@@ -53,7 +53,7 @@ scripts/          # Tooling
   install.sh      # Local install (symlinks to ~/.claude/)
   sync-skills.sh  # Sync in-session changes back to repo
 .claude/
-  hooks/          # SessionStart/Stop hooks for web sessions
+  hooks/          # SessionStart hook for web sessions
   settings.json   # Hook registration
 ```
 
@@ -61,7 +61,7 @@ scripts/          # Tooling
 
 ### Claude Code on the web
 
-Skills and agents are automatically installed via the `SessionStart` hook when you open this repo in a Claude Code web session. Modified skills are synced back and a PR is created when the session ends.
+Skills and agents are automatically installed via the `SessionStart` hook when you open this repo in a Claude Code web session. Run `/sync-skills` before ending the session to sync any improvements back and open a PR — see "Syncing Improvements" below.
 
 ### Local CLI
 
@@ -132,10 +132,7 @@ CI runs all four checks on every push and PR to `main`. [skill-check](https://gi
 
 ## Syncing Improvements
 
-If skills are improved during a Claude Code session:
-
-- **Automatic**: The `SessionStop` hook syncs changes and opens a PR
-- **Manual**: Run `/sync-skills` to sync on demand
+If skills are improved during a Claude Code session, run `/sync-skills` to sync the changes back to this repo and open a PR. `scripts/sync-skills.sh` also supports an `--auto` mode intended for a `SessionStop` hook, but no such hook is currently registered in `.claude/settings.json` — syncing today is manual only.
 
 ## Expected Install Locations
 
