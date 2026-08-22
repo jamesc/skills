@@ -19,7 +19,7 @@ A **three-pass code review** that progressively deepens analysis. Each pass uses
 ```
 
 **When a Linear issue or PR number is provided:**
-1. Find the associated PR: `gh pr list --repo jamesc/beamtalk --search "BT-123" --json number,headRefName`
+1. Find the associated PR: `gh pr list --search "BT-123" --json number,headRefName` (resolves against the current repo automatically; no need to pass `--repo`)
 2. Checkout the branch: `gh pr checkout <number>`
 3. Proceed with the review
 

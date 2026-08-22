@@ -21,7 +21,9 @@ Issues can become stale as the codebase evolves. This skill:
 
 ### 1. Determine Issue ID
 
-Use the same resolution logic as `pick-issue` step 1:
+Resolve in priority order (this is its own order, not `pick-issue`'s step 1 — that skill
+additionally falls back to a Linear backlog query, which doesn't apply here since there's
+no sensible default issue to refresh):
 - Explicit argument: `/refresh-issue BT-42` or `/refresh-issue 42`
 - Fall back to worktree name (e.g., `/workspaces/BT-34` → `BT-34`)
 - Fall back to branch name (e.g., `BT-10-implement-lexer` → `BT-10`)

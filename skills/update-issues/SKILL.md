@@ -102,11 +102,11 @@ When labels are missing, infer from context:
 - Title contains "Research", "Investigate" → `Research`
 - Title contains "syntax", "keyword", "operator", "language feature" → `Language Feature`
 
-**Size:**
-- Simple, single file → `S`
-- Multiple files, moderate scope → `M`
-- Large feature, many files → `L`
-- Major architectural change → `XL`
+**Size** (see `create-issue`'s "Size Estimates" table for the canonical definition — time-based, not file-count):
+- Few hours, e.g. add a test or simple refactor → `S`
+- ~1 day, e.g. new feature of moderate complexity → `M`
+- 2-3 days, significant feature across multiple files → `L`
+- Major feature or architectural change, consider breaking down → `XL`
 
 ## Step 4: Apply Updates
 
@@ -240,12 +240,12 @@ save_issue (id: "BT-21", labels: ["agent-ready", "Feature", "stdlib", "M"])
 - "Research", "Investigate" → `Research`
 - "syntax", "keyword", "operator", "language feature" → `Language Feature`
 
-### Size (by scope)
+### Size (see `create-issue`'s "Size Estimates" table for the canonical, time-based definition)
 
-- Single file, simple change → `S`
-- Few files, moderate feature → `M`
-- Many files, complex feature → `L`
-- Architectural, breaking change → `XL`
+- Few hours → `S`
+- ~1 day → `M`
+- 2-3 days → `L`
+- Major/architectural, consider breaking down → `XL`
 
 ## Setting Up Blocking Relationships
 
