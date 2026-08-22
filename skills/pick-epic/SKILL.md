@@ -1,6 +1,6 @@
 ---
 name: pick-epic
-description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and the Claude review bot (plus CodeRabbit when available) pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
+description: Execute an epic by running children in dependency-ordered waves using parallel subagents, one isolated worktree and PR per issue, squash-merging as CI and the Claude review bot pass. Use when user types /pick-epic or asks to execute an epic with parallel agents.
 model: opus
 argument-hint: "BT-XXX (epic ID)"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__save_issue, mcp__linear-server__save_comment
@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, mcp__linear-server__g
 
 # Pick Epic Workflow
 
-Execute an epic by grouping its children into **dependency-ordered waves** and running each wave as **parallel subagents**, one per issue. Each issue gets its own isolated worktree, its own PR (squash-merged to main), and is merged as soon as CI passes and the **Claude review bot** (`claude[bot]`, the CI reviewer) is satisfied — plus CodeRabbit when it has reviewed. Waves are sequential — Wave N+1 starts only after all Wave N PRs are merged.
+Execute an epic by grouping its children into **dependency-ordered waves** and running each wave as **parallel subagents**, one per issue. Each issue gets its own isolated worktree, its own PR (squash-merged to main), and is merged as soon as CI passes and the **Claude review bot** (`claude[bot]`, the CI reviewer) is satisfied. Waves are sequential — Wave N+1 starts only after all Wave N PRs are merged.
 
 **Key difference from `/do-refactor`:** This skill uses isolated worktrees and parallel subagents for maximum throughput — one PR per issue, not one PR for the whole epic. Use this for any L/XL epic where issues touch non-overlapping files.
 
@@ -82,18 +82,7 @@ Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for 
     done
     ```
     If the check never appears within the cap, note it in the merge summary and proceed.
-  - **CodeRabbit**: best-effort — give it time to reply, but skip it if rate-limited or absent:
-    ```bash
-    gh api repos/<owner>/<repo>/pulls/<PR>/reviews \
-      --jq '[.[] | select(.user.login | test("coderabbit"; "i")) | {state, body: .body[:120]}]'
-    ```
-    If its review body contains "usage limits", "rate limit", or "couldn't generate", or it hasn't posted by the time the Claude check completes, skip it and proceed.
 - **Handle Claude review bot findings**: its reviews are always `COMMENTED` (non-blocking), but the findings are the primary signal — see **Handling Claude Review Bot Findings** below.
-- **Handle CodeRabbit reviews**: If CodeRabbit requests changes:
-  - Fix genuine issues introduced by the PR (scope creep, bugs)
-  - Dismiss pre-existing issues with a comment: "Pre-existing code, not introduced by this PR"
-  - Dismiss scope-creep feedback with a comment explaining the deliberate choice
-  - Use `gh api -X PUT repos/<owner>/<repo>/pulls/<PR>/reviews/<review-id>/dismissals -f message="..."` to dismiss blocking reviews
 - Once all checks pass and no blocking reviews remain, merge:
   ```bash
   gh pr merge <PR> --squash --admin
@@ -143,7 +132,7 @@ Work on <BT-NNN> using the standard skill chain: /pick-issue → /review-code �
 3. `/done` — commit, push, create PR
 
 **IMPORTANT: In /done, the bot-review gate (step 12) waits for the `Claude BeamTalk Review`
-CI check (and counts CodeRabbit if it has posted) and may HALT** if unresolved findings remain,
+CI check and may HALT** if unresolved findings remain,
 prompting you to resolve (chain to /resolve-pr), dismiss with reason, or override
 with the literal phrase `merge anyway`. The parent agent owns CI watching, review
 handling, and merging — but expect /done to block at the gate when the review bot finds
@@ -209,27 +198,6 @@ The Claude review bot (`claude[bot]`) is the CI reviewer. Its reviews are always
    gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread-id>"}) { thread { isResolved } } }'
    ```
 
-## Handling CodeRabbit Reviews
-
-CodeRabbit may block merging with `CHANGES_REQUESTED`. Evaluate each finding:
-
-| Finding type | Action |
-|---|---|
-| Bug introduced by this PR | Fix it, push a commit |
-| Scope creep added by the agent | Remove the extra code, push a commit |
-| Pre-existing code (exists on `main`) | Dismiss: "Pre-existing, not introduced by this PR" |
-| Valid improvement, large scope | Create a Linear issue, add it as a child of the epic, then dismiss: "Tracked as <BT-NNN>" |
-
-When creating a follow-up issue for a valid-but-out-of-scope finding, use `/create-issue` and set the epic as its parent. Collect all follow-up issues created during the epic and report them at the end — don't interrupt the wave flow to work on them.
-
-Dismiss blocking reviews via the GitHub API:
-```bash
-gh api -X PUT repos/<owner>/<repo>/pulls/<PR>/reviews/<review-id>/dismissals \
-  -f message="<reason>"
-```
-
-Then re-attempt merge.
-
 ## Wave Sizing Guidance
 
 | Epic size | Expected waves | Typical parallelism |
@@ -246,7 +214,7 @@ Stop and ask the user for guidance if:
 - A subagent fails to compile after 2 fix attempts
 - An issue has genuinely ambiguous acceptance criteria
 - Two issues in the same wave have unexpected file overlap discovered mid-execution
-- The Claude review bot or CodeRabbit raises a security finding that is not pre-existing
+- The Claude review bot raises a security finding that is not pre-existing
 - A PR has merge conflicts with main (means another PR in this wave touched the same files)
 - The agent ledger shows two agents mapped to the same issue, an agent's returned
   worktree/branch doesn't match its ledger entry, or evidence that an agent wrote

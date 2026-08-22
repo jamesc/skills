@@ -17,15 +17,14 @@ When activated, execute this workflow to systematically address all PR review co
 
    Fetch from all three sources and print a numbered list of everything found:
 
-   **Review threads** (code-level, includes the Claude review bot `claude[bot]` and CodeRabbit): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`) and `isResolved`/`isOutdated` for each. The Claude review bot posts findings here as inline threads (always `COMMENTED` — non-blocking, so judge by `isResolved`, never by review state).
+   **Review threads** (code-level, from the Claude review bot `claude[bot]`): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`) and `isResolved`/`isOutdated` for each. The Claude review bot posts findings here as inline threads (always `COMMENTED` — non-blocking, so judge by `isResolved`, never by review state).
 
-   **General PR comments** (conversation-level): Use method `get_comments`. Includes any CodeRabbit summary comments.
+   **General PR comments** (conversation-level): Use method `get_comments`.
 
-   **Bot reviews explicitly**: Also fetch reviews from named bots:
+   **Bot reviews explicitly**: Also fetch reviews from the Claude review bot:
    ```bash
-   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("claude|coderabbit"; "i")) | {id, state, user: .user.login}'
+   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("claude"; "i")) | {id, state, user: .user.login}'
    ```
-   (Copilot is no longer used; CodeRabbit may be absent or rate-limited — that is fine, just resolve whatever is present.)
 
    **RULE:** You MUST show the raw count from each source before saying there is nothing to do. "0 threads, 0 general comments, 0 bot reviews" is the only acceptable "nothing to do" output.
 
@@ -112,7 +111,7 @@ When activated, execute this workflow to systematically address all PR review co
 14. **Auto-chain to done**: If all review comments have been successfully resolved (no failures, no pending issues), automatically activate the `done` skill:
     - Inform the user that all PR comments have been addressed
     - Activate the `done` skill without waiting for user confirmation
-    - The `done` skill's bot-review gate (step 12) will re-verify that no unresolved Claude review bot / CodeRabbit findings remain before reporting success. If something was missed here, the gate will halt there.
+    - The `done` skill's bot-review gate (step 12) will re-verify that no unresolved Claude review bot findings remain before reporting success. If something was missed here, the gate will halt there.
 
     If there are any issues or manual steps needed, report them and wait for user input instead.
 
