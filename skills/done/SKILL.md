@@ -88,10 +88,25 @@ When activated, execute this workflow to complete work and push:
 
 12. **Bot review gate** — never proceed past this step with unresolved review-bot findings.
 
-    The CI reviewer is the **Claude review bot** (`claude[bot]`), which runs as the
-    **`Claude BeamTalk Review`** CI workflow and posts its findings as inline review threads,
-    always `state: COMMENTED` (non-blocking) — so this gate keys off *unresolved threads*, never
-    review state.
+    The CI reviewer is the **Claude review bot**, which runs as the **`Claude BeamTalk Review`**
+    CI workflow (`.github/workflows/claude-review.yml`, `anthropics/claude-code-action`) and
+    posts its findings as inline review threads, always `state: COMMENTED` (non-blocking) — so
+    this gate keys off *unresolved threads*, never review state.
+
+    **Bot identity — do not assume `claude[bot]`:** the workflow calls
+    `anthropics/claude-code-action` without an explicit `github_token` input, so it authenticates
+    with the default `GITHUB_TOKEN` and posts comments as **`github-actions[bot]`**
+    (GraphQL `author.login` for this actor is the bare string `"github-actions"`, no `[bot]`
+    suffix — GraphQL strips it for `Bot`-typed actors). Confirmed both via `gh api
+    repos/{owner}/{repo}/pulls/comments/{id}` (`user.login: "github-actions[bot]"`,
+    `user.type: "Bot"`) and the GraphQL query below. `claude-review.yml` is the only workflow in
+    this repo with `pull-requests: write` that posts inline review comments, so `github-actions`
+    is an unambiguous signal here — but the filter below still checks for a literal `claude`
+    login too, in case the workflow is later switched to a dedicated GitHub App token. A filter
+    that only matches `claude` will silently miss every finding — this happened once already
+    (BT-3617's PR #4033: two real, correct findings went unenumerated by this gate until a human
+    caught it) — so don't narrow this back down without re-verifying the actual `author.login`
+    on a live PR first.
 
     Resolve `PR`, `OWNER`, `REPO` once up front so both subsections can use them:
     ```bash
@@ -111,7 +126,7 @@ When activated, execute this workflow to complete work and push:
       sleep 30
     done
     ```
-    - When the check completes, `claude[bot]`'s inline threads are posted and ready to enumerate in (b). If the check never appears within the cap, note it in the report and continue to (b).
+    - When the check completes, the bot's inline threads (posted as `github-actions[bot]` — see the identity note above) are ready to enumerate in (b). If the check never appears within the cap, note it in the report and continue to (b).
     - Pre-existing PRs skip the wait.
 
     **b. Enumerate unresolved findings** — the Claude review bot posts findings as inline
@@ -139,7 +154,7 @@ When activated, execute this workflow to complete work and push:
     {
       inline: [.data.repository.pullRequest.reviewThreads.nodes[]
         | select(.comments.nodes | length > 0)
-        | select(.comments.nodes[0].author.login | test(\"claude\"; \"i\"))
+        | select(.comments.nodes[0].author.login | test(\"claude|github-actions\"; \"i\"))
         | select(.isResolved | not)
         | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}],
       pagination: {
