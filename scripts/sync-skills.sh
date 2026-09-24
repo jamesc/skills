@@ -46,6 +46,20 @@ for agent_file in "$AGENTS_SRC"/*.md; do
   fi
 done
 
+# Under the symlink-install modes (global `install.sh`, or a project's
+# `init.sh` clone), `~/.claude/skills/<name>` IS `$SKILLS_DST/<name>` (same
+# inode via symlink) -- editing the installed skill already edited this
+# repo's working tree directly, so the diff loops above always find zero
+# differences and CHANGES stays empty even when real edits are sitting
+# right here uncommitted. Fall back to the repo's own git status so those
+# aren't silently missed -- this is the common case, not an edge case.
+if [ -z "$CHANGES" ]; then
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    CHANGES="${CHANGES}\n- ${line}"
+  done < <(git status --porcelain -- skills/ agents/)
+fi
+
 # Exit early if no changes
 if [ -z "$CHANGES" ]; then
   if [ "$AUTO_MODE" = "--auto" ]; then
