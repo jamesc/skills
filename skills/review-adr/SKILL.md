@@ -188,7 +188,8 @@ Challenge the decision from outside the author's perspective. Use a fresh, conte
 
 Use the `Agent` tool with `subagent_type: "general-purpose"` and `model: "opus"` — a fresh
 subagent hasn't seen the drafting discussion, and Opus gives a different tier of judgment
-than the Sonnet 5 coding default:
+than the Fable model that `draft-adr` uses to write ADRs (and the Sonnet 5 coding default).
+Keep this reviewer on a different tier from the drafter:
 
 ```
 You are a skeptical principal architect reviewing an ADR. Your job is to find

@@ -52,7 +52,7 @@ is_valid_model() {
   local model="$1"
   [[ "$model" =~ ^claude- ]] && return 0
   case "$model" in
-    opus|sonnet|haiku) return 0 ;;
+    fable|opus|sonnet|haiku) return 0 ;;
     *) return 1 ;;
   esac
 }
