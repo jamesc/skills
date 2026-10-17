@@ -98,10 +98,12 @@ The fast pass — read the diff line by line, catch surface issues.
    - Improve naming, docs, DDD alignment
    - Update `docs/beamtalk-ddd-model.md` for new domain concepts
 
-7. **Verify tests pass** after any changes:
+7. **Verify tests pass** after any changes — the touched crates only, not the workspace:
    ```bash
-   just test
+   just test-rust-crate <crate>          # for each crate you changed
+   just test-stdlib && just test-bunit   # only if stdlib/ or generated code changed
    ```
+   Not `just test`: the full suite ran in `/pick-issue` step 14 and CI runs it again on push.
 
 8. **Pass 1 summary**: Report findings using the severity levels (🔴🟡🔵✅).
 
@@ -191,11 +193,15 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
     - **Theoretical, unlikely in practice** → note but don't act
     - **Wrong / already handled** → dismiss with explanation
 
-18. **Final CI run** if any changes were made in Pass 3:
+18. **Final check** if any changes were made in Pass 3:
     ```bash
-    just ci
+    just test-rust-crate <crate>   # each crate the review changed
+    just clippy
     ```
-    (Use `just test` for quick iteration during the review; only run full `just ci` here at the final gate.)
+    Not `just ci` or `just test`: the one full local run of this PR was `/pick-issue` step 14,
+    and CI runs the whole matrix on every push. Run `just ci-changed` here only if the review
+    changed something that run could not have seen (a new crate, build/test configuration,
+    the Justfile).
 
 ---
 

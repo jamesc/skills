@@ -35,9 +35,9 @@ When activated, execute this workflow to systematically address all PR review co
    - Create a todo list with all items to address, marking each `push` (code change) or `reply-only`
    - **If every item is `reply-only`, skip steps 4–9** and go straight to step 10.
 
-4. **Run tests first**: Verify current state passes checks:
+4. **Run tests first** for the crates the review touches (not the workspace):
    ```bash
-   just test
+   just test-rust-crate <crate>
    ```
 
 5. **Write tests for behavioral changes**: For code fixes that change logic or behavior:
@@ -55,11 +55,15 @@ When activated, execute this workflow to systematically address all PR review co
      - Add a TODO comment in the code referencing the issue number
    - Mark the todo item complete
 
-7. **Run full test suite**: After all changes:
+7. **Final check** after all changes:
    ```bash
-   just ci
+   just test-rust-crate <crate>   # each crate this round changed
+   just clippy
    ```
-   (Use `just test` for quick iteration; `just ci` is the final gate before push.)
+   Not `just ci`: the full local suite ran once in `/pick-issue` step 14 and CI runs the
+   whole matrix on this push. Use `just ci-changed` (the path-gated run, never plain
+   `just ci`) only when this round changed build or test configuration, the Justfile, or
+   added a crate.
 
 8. **Commit changes**: Stage and commit with a descriptive message (using issue ID from step 1):
    ```bash
