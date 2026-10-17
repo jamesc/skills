@@ -27,12 +27,16 @@ When activated, execute this workflow to complete work and push:
    If all changed files (staged + committed vs main) are docs/config (`.md`, `.json`, `.yaml`, `.toml`, etc.), skip this step.
    Otherwise run: `just build && just clippy && just fmt-check`. Stop on failure.
 
-   **Tests:** run `just test` — unless `just test`/`just ci`/`just ci-changed` already ran
-   clean earlier in this session against the exact same changes, with no files touched since
-   (e.g. `/pick-issue` step 14 or `/review-code` Pass 3 already ran it right before chaining
-   here). If anything changed since that run — including review-driven fixes — re-run `just
-   test`. When unsure whether it's stale, run it; a redundant ~10s run is cheaper than a broken
-   push.
+   **Tests:** do **not** run `just test` here. The full local suite runs once per PR, in
+   `/pick-issue` step 14 (`just ci-changed`); CI runs the whole matrix again on every push,
+   so a second full local run buys nothing and costs 10 to 25 minutes. If files changed since
+   that run (review-driven fixes), run the fast tier of each changed crate instead:
+   ```bash
+   just test-rust-crate <crate>          # each crate changed since the ci-changed run
+   just test-stdlib && just test-bunit   # only if stdlib/ or generated code changed
+   ```
+   Run `just ci-changed` again only when something that run could not have seen changed
+   (a new crate, build or test configuration, the Justfile).
 
    If any changed files are under `stdlib/`, `examples/`, or other corpus-source paths,
    also run `just build-corpus` and stage the regenerated `crates/beamtalk-examples/corpus.json`

@@ -106,11 +106,17 @@ Begin working on the issue, following AGENTS.md guidelines.
 
 ### 11. Test Frequently
 
-After each significant change, run the fast test suite:
+After each significant change, run the fast tier of the crate you are changing — not the
+whole workspace:
 ```bash
-just test
+just test-rust-crate beamtalk-codegen     # the crate(s) you touched; a few seconds to ~1 min
+just test-stdlib && just test-bunit       # only if you changed stdlib/ or generated code
 ```
-This runs unit tests (~10s). Save full CI for the final check before code review. Run it synchronously and wait for it to finish — don't background it and poll.
+**The full local suite runs exactly once per PR, in step 14.** `just test` is the whole
+workspace (fast tier ~8 min, plus stdlib/BUnit/runtime) and `just test-corpus` is the
+13-minute state-threading corpus tier; neither belongs in the edit loop, and CI runs the
+whole matrix on every push anyway. Run tests synchronously and wait — don't background them
+and poll.
 
 If you touched `stdlib/`, `examples/`, or other corpus-source files, run `just build-corpus`
 and commit the regenerated `crates/beamtalk-examples/corpus.json` in the same commit —
@@ -129,7 +135,7 @@ type: description BT-{number}
 
 Push after each commit to keep the remote updated.
 
-### 14. Run Full CI
+### 14. Run Full CI (the one full local run of this PR)
 
 Before completing, run the local CI checks:
 ```bash
@@ -137,10 +143,17 @@ just ci-changed
 ```
 This always runs build/lint/test/check-corpus/check-surface-drift, and additionally
 runs `test-integration`/`test-mcp`/`test-repl-protocol`/`test-parity` only if the diff
-touches the workspace/REPL/MCP/parity surface — those suites are otherwise redundant
+touches the workspace/REPL/MCP/parity surface, and the Rust corpus tier (`test-corpus`)
+only if the diff touches the compiler crates — those suites are otherwise redundant
 to run locally, since GitHub Actions runs them as their own parallel CI jobs regardless.
 Fix any failures before proceeding. Use `just ci` instead if you want the full suite
 unconditionally (e.g. touching shared infra you're not sure is covered by the path check).
+
+**This is the only time the full suite runs locally for this PR.** Everything after it
+(`/review-code` fixes, `/done`, `/resolve-pr` rounds) re-runs only the touched crates'
+fast tier (`just test-rust-crate <crate>`) plus `just clippy`; CI is the authority and
+runs the whole matrix once per push. `just lint` records lint stamps, so the pre-push
+hook will not repeat clippy or dialyzer for unchanged sources.
 
 ### 15. Auto-chain: resolve → review → done
 
