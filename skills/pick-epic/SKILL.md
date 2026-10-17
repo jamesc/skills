@@ -82,8 +82,8 @@ Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for 
     done
     ```
     If the check never appears within the cap, note it in the merge summary and proceed.
-- **Handle Claude review bot findings**: its reviews are always `COMMENTED` (non-blocking), but the findings are the primary signal — see **Handling Claude Review Bot Findings** below.
-- Once all checks pass and no blocking reviews remain, merge:
+- **Handle Claude review bot findings**: its reviews are always `COMMENTED` (non-blocking), but the findings are the primary signal — see **Handling Claude Review Bot Findings** below. Only a 🛑 **Blocker** thread holds the merge; Suggestions and Nits are replied to and resolved without a push.
+- Once all checks pass and no unresolved 🛑 Blocker threads remain, merge:
   ```bash
   gh pr merge <PR> --squash --admin
   ```
@@ -132,12 +132,13 @@ Work on <BT-NNN> using the standard skill chain: /pick-issue → /review-code �
 3. `/done` — commit, push, create PR
 
 **IMPORTANT: In /done, the bot-review gate (step 12) waits for the `Claude BeamTalk Review`
-CI check and may HALT** if unresolved findings remain,
-prompting you to resolve (chain to /resolve-pr), dismiss with reason, or override
-with the literal phrase `merge anyway`. The parent agent owns CI watching, review
-handling, and merging — but expect /done to block at the gate when the review bot finds
-something. Pick override only if you've audited the findings and accepted the
-risk; the override is logged in the final report.
+CI check and HALTS only on an unresolved 🛑 Blocker thread**, prompting you to resolve
+(chain to /resolve-pr), dismiss with reason, or override with the literal phrase
+`merge anyway`. 💡 Suggestions and 🔹 Nits are answered in one line and resolved; they
+never start a push on their own (the bot re-reviews every push, so a push per finding never
+converges) — carry the correct ones into the next push that happens anyway. The parent
+agent owns CI watching, review handling, and merging. Pick override only if you've audited
+the Blockers and accepted the risk; the override is logged in the final report.
 
 **Confinement and sync-only rules — this run is one of several parallel agents:**
 - All work stays inside your assigned worktree. Never `cd` out of it, never edit files
@@ -168,28 +169,36 @@ When a subagent's PR has a CI failure:
 
 ## Handling Claude Review Bot Findings
 
-The Claude review bot (`claude[bot]`) is the CI reviewer. Its reviews are always `COMMENTED` (non-blocking), and it posts findings as **inline review threads** — judge by whether each thread is unresolved, never by review state. These are the primary review signal. **Do not skip them.**
+The Claude review bot is the CI reviewer. It posts as `github-actions[bot]` (GraphQL `author.login` `github-actions`; see `/done` step 12 for why — a filter that only matches `claude` silently misses every finding). Its reviews are always `COMMENTED` (non-blocking), and it posts findings as **inline review threads** prefixed with a severity tag: `🛑 **Blocker**`, `💡 **Suggestion**`, `🔹 **Nit**`. Judge by whether each thread is unresolved, never by review state. **Do not skip them, and do not push for each one.**
+
+The bot re-reviews every push and answers with a fresh set of Suggestions and Nits even when its verdict is "approved". A push per finding therefore never converges: each costs a ~30 min CI run plus a review round (BT-3823's PR: 8 pushes, 6 review rounds, 5 hours). Only a Blocker starts a push.
 
 1. **Confirm the review posted** — the `Claude BeamTalk Review` check has left `pending` (see step 4c).
-2. **Get its inline threads** (unresolved, authored by `claude[bot]`):
+2. **Get its inline threads** (unresolved, with severity):
    ```bash
    gh api graphql -f query='{ repository(owner:"<owner>", name:"<repo>") {
      pullRequest(number: <PR>) { reviewThreads(first:100) { nodes {
        id isResolved comments(first:1) { nodes { author { login } url body } } } } } } }' \
      --jq '.data.repository.pullRequest.reviewThreads.nodes[]
        | select(.isResolved | not)
-       | select(.comments.nodes[0].author.login | test("claude"; "i"))
-       | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}'
+       | select(.comments.nodes[0].author.login | test("claude|github-actions"; "i"))
+       | {id, url: .comments.nodes[0].url,
+          severity: (.comments.nodes[0].body
+            | if startswith("🛑") then "Blocker" elif startswith("💡") then "Suggestion"
+              elif startswith("🔹") then "Nit" else "unknown" end),
+          body: (.comments.nodes[0].body[:200])}'
    ```
-3. **Evaluate each finding**:
+3. **Evaluate each finding by severity**:
 
-| Finding type | Action |
+| Severity | Action |
 |---|---|
-| Bug introduced by this PR | Fix it, push a commit, reply with fix hash |
-| Valid improvement, small scope | Fix it inline if < 10 lines |
-| Valid improvement, large scope | Create a follow-up Linear issue, reply with issue link |
-| Pre-existing code | Reply: "Pre-existing, not introduced by this PR" |
-| False positive / style nitpick | Reply briefly, then resolve the thread |
+| 🛑 Blocker, or a real bug in this PR's code whatever its tag | Fix it, push a commit, reply with the fix hash, resolve |
+| `unknown` (untagged, or a human reviewer's thread) | Treat as a Blocker: fix or reply with why not, resolve |
+| 💡 Suggestion / 🔹 Nit, plainly correct | Reply in one line that it rides the next code push; resolve. Carry it into the next push that happens anyway (a Blocker fix, a CI fix). No push for it alone |
+| 💡 Suggestion / 🔹 Nit, valid but larger than this PR | Create a follow-up Linear issue, reply with the issue link, resolve |
+| 💡 Suggestion / 🔹 Nit, pre-existing or not worth its code | Reply in one line why it stays as is, resolve |
+
+A reply-only round needs no `just ci`, no pre-push hook and no wait for CI.
 
 4. **Reply to and resolve each addressed thread**:
    ```bash

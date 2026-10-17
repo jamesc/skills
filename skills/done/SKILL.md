@@ -86,7 +86,9 @@ When activated, execute this workflow to complete work and push:
 
 11. **Update Linear state**: Mark the Linear issue as "In Review" with `save_issue` (id: "BT-{number}", state: "In Review").
 
-12. **Bot review gate** — never proceed past this step with unresolved review-bot findings.
+12. **Bot review gate** — never proceed past this step with an unresolved 🛑 **Blocker** thread. A
+    💡 **Suggestion** or 🔹 **Nit** thread is answered and resolved, and is **never** the reason for a
+    push on its own (see (c) below for why).
 
     The CI reviewer is the **Claude review bot**, which runs as the **`Claude BeamTalk Review`**
     CI workflow (`.github/workflows/claude-review.yml`, `anthropics/claude-code-action`) and
@@ -156,7 +158,13 @@ When activated, execute this workflow to complete work and push:
         | select(.comments.nodes | length > 0)
         | select(.comments.nodes[0].author.login | test(\"claude|github-actions\"; \"i\"))
         | select(.isResolved | not)
-        | {url: .comments.nodes[0].url, body: (.comments.nodes[0].body[:200])}],
+        | {url: .comments.nodes[0].url,
+           severity: (.comments.nodes[0].body
+             | if startswith(\"🛑\") then \"Blocker\"
+               elif startswith(\"💡\") then \"Suggestion\"
+               elif startswith(\"🔹\") then \"Nit\"
+               else \"unknown\" end),
+           body: (.comments.nodes[0].body[:200])}],
       pagination: {
         threads_has_next: .data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage,
         threads_end_cursor: .data.repository.pullRequest.reviewThreads.pageInfo.endCursor,
@@ -183,17 +191,40 @@ When activated, execute this workflow to complete work and push:
     the `resolveReviewThread` mutation after replying, and matches step (c).2 below, which
     requires resolving the thread even when dismissing with a reason.
 
-    **c. If any unresolved findings remain, HALT** and prompt the user explicitly:
-    - Print each finding: URL + first ~200 chars of body.
-    - Ask: "Found N unresolved bot review findings — what do you want to do?"
-      1. **Resolve** → chain to `/resolve-pr` (handles enumerate → fix → reply → resolve threads → push). This is the recommended path.
+    **c. Triage by severity.** The bot prefixes every inline finding with its severity tag
+    (`🛑 **Blocker**`, `💡 **Suggestion**`, `🔹 **Nit**`, from `claude-review.yml`); the
+    `severity` field above reads it. Print each unresolved finding (severity, URL, first ~200
+    chars) grouped by severity, then:
+
+    - **🛑 Blocker, or `unknown` severity (an untagged thread, or one a human opened):** HALT and
+      prompt the user explicitly — "Found N unresolved Blocker findings — what do you want to do?"
+      1. **Resolve** → chain to `/resolve-pr` (enumerate → fix → reply → resolve threads → push). This is the recommended path.
       2. **Dismiss with reason** → reply to each thread with a justification (e.g. "out of scope, tracked in BT-XXXX") and resolve the thread, then re-run the gate.
       3. **Override** → user types `merge anyway` (exact phrase) to proceed despite findings. Log the override in the final report.
-    - Do not proceed to step 13 without one of {resolve done, dismiss done, explicit override}.
+      Do not proceed to step 13 with a Blocker open without one of {resolve done, dismiss done, explicit override}.
 
-    **d. If zero unresolved findings**, report ✅ and continue.
+    - **💡 Suggestion and 🔹 Nit: reply and resolve, do not push for them.** The review bot
+      re-reviews *every* push and answers with a fresh set of Suggestions and Nits even when its
+      verdict is "approved", so one push per finding is an unbounded loop that costs a full CI
+      run (~30 min on the three-OS `check` matrix) and a review round each time — BT-3823's PR
+      took 8 pushes and 6 review rounds over 5 hours this way. Instead, for each such thread:
+      1. Reply in **one line**: either what you will change and that it rides the next code push,
+         or why it stays as is (correct as written / pre-existing / out of scope, tracked in
+         BT-XXXX). Then resolve the thread.
+      2. Carry the plainly-correct ones, and any that correctly cites a `CLAUDE.md` or
+         `docs/development/*-guidelines.md` rule, into the **next push that is happening anyway**
+         (a Blocker fix, a CI fix, a human reviewer's change). If no such push comes, they land as
+         replied-and-resolved with no code change — that is the intended outcome, not a gap.
+      3. A Suggestion that describes a real bug in this PR's code is a Blocker whatever its tag:
+         treat it under the Blocker branch. A valid improvement too large for this PR gets a
+         follow-up Linear issue; reply with the link and resolve.
+      A reply-only round needs no `just test`, no `just ci` and no push. Never run the pre-push
+      hook or wait for CI to satisfy a Suggestion or a Nit.
 
-13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and the bot review gate result (passed clean / passed after resolve / overridden by user with phrase). If overridden, include the count of skipped findings so the risk is visible in the report.
+    **d. If zero unresolved Blocker threads remain**, report ✅ (with the count of Suggestions and
+    Nits replied to and resolved, and how many ride a later push) and continue.
+
+13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and the bot review gate result (passed clean / passed after resolve / passed with N Suggestions and Nits replied-and-resolved / overridden by user with phrase). If overridden, include the count of skipped Blockers so the risk is visible in the report.
 
 ## When PR is merged
 

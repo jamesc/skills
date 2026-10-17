@@ -17,21 +17,23 @@ When activated, execute this workflow to systematically address all PR review co
 
    Fetch from all three sources and print a numbered list of everything found:
 
-   **Review threads** (code-level, from the Claude review bot `claude[bot]`): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`) and `isResolved`/`isOutdated` for each. The Claude review bot posts findings here as inline threads (always `COMMENTED` — non-blocking, so judge by `isResolved`, never by review state).
+   **Review threads** (code-level, from the Claude review bot, which posts as `github-actions[bot]`): Use the GitHub MCP `pull_request_read` tool with method `get_review_comments`. Capture `threadId` (node ID, e.g. `PRRT_kwDO…`), `isResolved`/`isOutdated`, and the **severity tag** the body starts with (`🛑 **Blocker**`, `💡 **Suggestion**`, `🔹 **Nit**`) for each. The Claude review bot posts findings here as inline threads (always `COMMENTED` — non-blocking, so judge by `isResolved`, never by review state).
 
    **General PR comments** (conversation-level): Use method `get_comments`.
 
    **Bot reviews explicitly**: Also fetch reviews from the Claude review bot:
    ```bash
-   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("claude"; "i")) | {id, state, user: .user.login}'
+   gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '.[] | select(.user.login | test("claude|github-actions"; "i")) | {id, state, user: .user.login}'
    ```
 
    **RULE:** You MUST show the raw count from each source before saying there is nothing to do. "0 threads, 0 general comments, 0 bot reviews" is the only acceptable "nothing to do" output.
 
-3. **Analyze and plan**: For each review comment:
+3. **Analyze and plan — triage by severity first**: For each review comment:
    - Understand what the reviewer is asking for
-   - Determine if it needs a code fix, documentation, Linear issue, or just clarification
-   - Create a todo list with all items to address
+   - **🛑 Blocker, a human reviewer's ask, or any finding that is a real bug in this PR's code:** needs a code fix (or a reply with why not and a resolve). These are the only threads that justify a push.
+   - **💡 Suggestion / 🔹 Nit:** reply in one line and resolve; **do not push for it alone**. The bot re-reviews every push and answers with fresh Suggestions and Nits, so a push per finding never converges and each costs a ~30 min CI run plus a review round. A plainly-correct one (or one that correctly cites a `CLAUDE.md` / guidelines rule) rides along *only if* a push is happening anyway for a Blocker or a CI fix; a valid larger one becomes a follow-up Linear issue (reply with the link); the rest stay as is with the reason in the reply.
+   - Create a todo list with all items to address, marking each `push` (code change) or `reply-only`
+   - **If every item is `reply-only`, skip steps 4–9** and go straight to step 10.
 
 4. **Run tests first**: Verify current state passes checks:
    ```bash
@@ -92,7 +94,7 @@ When activated, execute this workflow to systematically address all PR review co
     ```bash
     gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread_node_id>"}) { thread { isResolved } } }'
     ```
-    The thread node ID (e.g., `PRRT_kwDO...`) is available from the `get_review_comments` response in step 2. Only resolve threads where the fix has been committed and pushed.
+    The thread node ID (e.g., `PRRT_kwDO...`) is available from the `get_review_comments` response in step 2. Resolve a thread only once its fix has been committed and pushed, or once your reply states why no change is made (a Suggestion or Nit that stays as is, is pre-existing, or is tracked in a follow-up issue).
 
 12. **Final verification pass** — re-fetch all threads after pushing and confirm completeness:
     ```bash
