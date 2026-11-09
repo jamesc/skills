@@ -50,7 +50,8 @@ When activated, execute this workflow to systematically address all PR review co
 6. **Address each comment**: For each item in the plan:
    - Make the necessary code changes to make the test pass
    - Run tests after each significant change to catch regressions early
-   - If a comment requires a follow-up Linear issue (e.g., "TODO for later"):
+   - Fix valid findings in this PR by default. Create a follow-up Linear issue only when the fix is in another repo or a subsystem this PR doesn't touch, is bigger than about half a day, needs a design decision from the user, or is a security finding you can't fix now. A size-S finding in code the PR already touches is fixed, not filed. If you do file:
+     - Search Linear for an open issue with the same root cause first, and add to it instead of opening a duplicate
      - Create the Linear issue with full context
      - Add a TODO comment in the code referencing the issue number
    - Mark the todo item complete
