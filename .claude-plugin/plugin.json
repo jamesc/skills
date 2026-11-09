@@ -1,0 +1,12 @@
+{
+  "name": "dev-workflow",
+  "description": "ADR-to-PR development lifecycle: draft and review ADRs, plan them into Linear epics, pick up issues, review, ship PRs, resolve review comments, and run epics with parallel agents.",
+  "version": "1.0.0",
+  "author": {
+    "name": "James Casey"
+  },
+  "homepage": "https://github.com/jamesc/skills",
+  "repository": "https://github.com/jamesc/skills",
+  "license": "MIT",
+  "keywords": ["workflow", "linear", "adr", "pull-request", "code-review", "refactoring"]
+}
