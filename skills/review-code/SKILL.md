@@ -189,7 +189,7 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
 17. **Triage findings** from the adversarial review. For each:
     - **Valid and fixable now** → implement the fix
     - **Security issue, can't fix now** → create Linear issue with `Bug` label + urgent priority. **Never drop security findings.**
-    - **Valid but out of scope** → create Linear issue
+    - **Valid but out of scope** → create a Linear issue only if it meets a filing condition in step 19; otherwise fix it here
     - **Theoretical, unlikely in practice** → note but don't act
     - **Wrong / already handled** → dismiss with explanation
 
@@ -207,7 +207,9 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
 
 ## Summary
 
-19. **Create follow-up issues**: Anything found during review that isn't fixed in this PR **must** get a Linear issue — findings should never be just "noted" and forgotten.
+19. **Create follow-up issues**: Fix valid findings in this PR by default. Anything that legitimately isn't fixed here **must** get a Linear issue — findings should never be just "noted" and forgotten.
+
+    **Fix-or-file rule.** File instead of fixing only when at least one holds: the fix is in another repo or a subsystem this PR doesn't otherwise touch; it is bigger than about half a day (size M or larger); it needs a design decision from the user; or it is a security finding you can't fix now. A size-S finding in code the PR already touches is fixed, never filed. Before filing, search Linear for an open issue with the same root cause and add to it rather than opening a duplicate. Note in the summary which condition each filed issue met.
 
     **Always create an issue for:**
     - 🔴 **Security findings not fixed now** — label `Bug` + `urgent priority`. Never let security issues be silently dropped.
