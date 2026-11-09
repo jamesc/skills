@@ -46,6 +46,7 @@ For a whole epic at once, `/pick-epic` runs the child issues in dependency-order
 ## Directory Structure
 
 ```
+.claude-plugin/   # plugin.json + marketplace.json (installable as a plugin)
 skills/           # Claude Code skills (SKILL.md per directory)
 agents/           # Claude Code agents (.md files)
 scripts/          # Tooling
@@ -58,6 +59,18 @@ scripts/          # Tooling
 ```
 
 ## Setup
+
+### As a plugin (Claude Code marketplace)
+
+This repo is a Claude Code plugin marketplace (`.claude-plugin/marketplace.json`) with one plugin, `dev-workflow`, that contains every skill and agent here:
+
+```
+/plugin install dev-workflow --marketplace jamesc/skills
+```
+
+Or in two steps: `/plugin marketplace add jamesc/skills`, then `/plugin install dev-workflow@jamesc-skills`.
+
+Plugin skills are namespaced, so `/done` becomes `/dev-workflow:done`. Don't combine this with `./scripts/install.sh` below: each skill would be loaded twice, once from the symlinks and once from the plugin. Bump `version` in both `.claude-plugin/plugin.json` and the marketplace entry when you want installed copies to update.
 
 ### Claude Code on the web
 
