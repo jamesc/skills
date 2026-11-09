@@ -92,8 +92,9 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    *After the FIRST issue:* Create the PR immediately (**no auto-merge** — human review required):
    ```bash
    git push -u origin HEAD
-   gh pr create --title "Refactor: <epic title> BT-XXX" --body "<PR body>"
+   gh pr create --title "Refactor: <epic title> BT-XXX" --body "<PR body>" [--label ci:corpus] [--label ci:core-diff]
    ```
+   Add the opt-in CI labels AGENTS.md § "Opt-in CI labels" calls for. A refactor meant to leave codegen output unchanged should carry `ci:core-diff` (or `core-diff:enforce`).
    Do NOT use `--auto-merge` or enable auto-merge. Refactoring PRs must be reviewed by a human.
 
    *After subsequent issues:* Push to update the existing PR:
