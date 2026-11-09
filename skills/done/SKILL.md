@@ -77,8 +77,10 @@ When activated, execute this workflow to complete work and push:
    
    **If no PR exists:** Use the issue ID from step 1 (if available). Fetch the Linear issue title with `get_issue` (id: "BT-{number}"). Create the PR:
    ```bash
-   gh pr create --title "<Issue Title> (BT-{number})" --body "<Issue description with link to Linear issue>"
+   gh pr create --title "<Issue Title> (BT-{number})" --body "<Issue description with link to Linear issue>" [--label ci:corpus] [--label ci:core-diff]
    ```
+   Add the opt-in CI labels AGENTS.md § "Opt-in CI labels" calls for (e.g. `ci:corpus` for any state-threading change). If the PR already exists and the diff now qualifies, add the label with `gh pr edit --add-label`.
+
    The PR body should include:
    - Link to Linear issue: `https://linear.app/beamtalk/issue/BT-{number}` (if issue exists)
    - Brief summary of what was implemented
