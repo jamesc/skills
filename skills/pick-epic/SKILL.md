@@ -29,6 +29,7 @@ Then fetch all child issues with their blocking relationships and sizes. This is
 
 - Skip children already `Done` or `In Progress`
 - Skip children with `needs-spec` label — tell the user which ones need spec
+- Skip children with `deferred` label — list them in the summary as deferred, and don't let them block closing the epic's other work
 - Stop if any blocking issue is not `Done` (the epic has unresolved external dependencies)
 - Confirm `agent-ready` label is present on all workable children
 

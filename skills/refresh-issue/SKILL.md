@@ -87,6 +87,7 @@ Determine if the issue is:
 | **Still Open** | No implementation exists | Update description if needed |
 | **Obsolete** | Requirements changed, no longer needed | Mark as Canceled with explanation |
 | **Blocked** | Depends on unfinished work | Update state to Blocked, add blocking issues |
+| **Not now** | The user decides it isn't worth doing yet but shouldn't be lost | Swap the Agent State label to `deferred` (keep Backlog status) and comment with the decision and what would bring it back |
 
 ### 6. Update the Issue
 
