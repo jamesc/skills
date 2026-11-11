@@ -32,6 +32,8 @@ For a whole epic at once, `/pick-epic` runs the child issues in dependency-order
 
 Small problems found along the way (by `/review-code`, the review bot, or `/resolve-pr`) are fixed in the PR that found them. The backlog is being closed down, so these skills file a follow-up issue only for work in another repo, work of size M or larger, a decision that needs you, or a security finding that can't be fixed now. Everything else is fixed or dropped with a reason.
 
+The review bot re-reviews every push, so its Suggestions and Nits are fixed in one batched cleanup push per PR (a `chore: review cleanup BT-N` commit). After that push, only a Blocker starts another one; later Suggestions and Nits get a one-line reply.
+
 ### Issue management
 
 - `/linear` — general Linear issue management (tasks, tickets, bugs)

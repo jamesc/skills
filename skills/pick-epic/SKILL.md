@@ -91,7 +91,7 @@ Without an explicit `model` every agent inherits this skill's Opus. The chain in
     done
     ```
     If the check never appears within the cap, note it in the merge summary and proceed.
-- **Handle Claude review bot findings**: its reviews are always `COMMENTED` (non-blocking), but the findings are the primary signal — see **Handling Claude Review Bot Findings** below. Only a 🛑 **Blocker** thread holds the merge; Suggestions and Nits are replied to and resolved without a push.
+- **Handle Claude review bot findings**: its reviews are always `COMMENTED` (non-blocking), but the findings are the primary signal — see **Handling Claude Review Bot Findings** below. Only a 🛑 **Blocker** thread holds the merge; plainly-correct Suggestions and Nits are fixed in the PR's one cleanup push, and after that they are replied to and resolved without a push.
 - Once all checks pass and no unresolved 🛑 Blocker threads remain, merge:
   ```bash
   gh pr merge <PR> --squash --admin
@@ -143,9 +143,10 @@ Work on <BT-NNN> using the standard skill chain: /pick-issue → /review-code �
 **IMPORTANT: In /done, the bot-review gate (step 12) waits for the `Claude BeamTalk Review`
 CI check and HALTS only on an unresolved 🛑 Blocker thread**, prompting you to resolve
 (chain to /resolve-pr), dismiss with reason, or override with the literal phrase
-`merge anyway`. 💡 Suggestions and 🔹 Nits are answered in one line and resolved; they
-never start a push on their own (the bot re-reviews every push, so a push per finding never
-converges) — carry the correct ones into the next push that happens anyway. The parent
+`merge anyway`. The plainly-correct 💡 Suggestions and 🔹 Nits are fixed together in the PR's
+one cleanup push (a single `chore: review cleanup BT-NNN` commit); once that is spent they are
+answered in one line and resolved with no push (the bot re-reviews every push, so a push per
+finding never converges). The parent
 agent owns CI watching, review handling, and merging. Pick override only if you've audited
 the Blockers and accepted the risk; the override is logged in the final report.
 
@@ -180,7 +181,13 @@ When a subagent's PR has a CI failure:
 
 The Claude review bot is the CI reviewer. It posts as `github-actions[bot]` (GraphQL `author.login` `github-actions`; see `/done` step 12 for why — a filter that only matches `claude` silently misses every finding). Its reviews are always `COMMENTED` (non-blocking), and it posts findings as **inline review threads** prefixed with a severity tag: `🛑 **Blocker**`, `💡 **Suggestion**`, `🔹 **Nit**`. Judge by whether each thread is unresolved, never by review state. **Do not skip them, and do not push for each one.**
 
-The bot re-reviews every push and answers with a fresh set of Suggestions and Nits even when its verdict is "approved". A push per finding therefore never converges: each costs a ~30 min CI run plus a review round (BT-3823's PR: 8 pushes, 6 review rounds, 5 hours). Only a Blocker starts a push.
+The bot re-reviews every push and answers with a fresh set of Suggestions and Nits even when its verdict is "approved". A push per finding therefore never converges: each costs a ~30 min CI run plus a review round (BT-3823's PR: 8 pushes, 6 review rounds, 5 hours). Each PR gets **one cleanup push** for its plainly-correct Suggestions and Nits, so they are fixed here and not dropped or filed; after it, only a Blocker starts a push. The cleanup push is spent if this prints anything on the PR's branch:
+
+```bash
+git log origin/main..HEAD --oneline --grep='^chore: review cleanup'
+```
+
+The subagent's `/done` usually spends it. If it hasn't, make the cleanup commit yourself in the agent's worktree with the subject `chore: review cleanup BT-NNN`, push once, and wait for the re-review before merging.
 
 1. **Confirm the review posted** — the `Claude BeamTalk Review` check has left `pending` (see step 4c).
 2. **Get its inline threads** (unresolved, with severity):
@@ -203,9 +210,10 @@ The bot re-reviews every push and answers with a fresh set of Suggestions and Ni
 |---|---|
 | 🛑 Blocker, or a real bug in this PR's code whatever its tag | Fix it, push a commit, reply with the fix hash, resolve |
 | `unknown` (untagged, or a human reviewer's thread) | Treat as a Blocker: fix or reply with why not, resolve |
-| 💡 Suggestion / 🔹 Nit, plainly correct | Reply in one line that it rides the next code push; resolve. Carry it into the next push that happens anyway (a Blocker fix, a CI fix). No push for it alone |
+| 💡 Suggestion / 🔹 Nit, plainly correct, cleanup push not spent | Fix all of them in one `chore: review cleanup BT-NNN` commit, push once, reply with the hash, resolve |
+| 💡 Suggestion / 🔹 Nit, plainly correct, cleanup push spent | Reply in one line why it stays as is; resolve. It rides along only if a push happens anyway (a Blocker fix, a CI fix). No push for it alone |
 | 💡 Suggestion / 🔹 Nit, valid but larger than this PR | Apply the fix-or-file rule below: fix it in this PR unless it meets a filing condition; only then create a follow-up Linear issue, reply with the issue link, resolve |
-| 💡 Suggestion / 🔹 Nit, pre-existing | Size S in a file the PR already edits: treat as plainly correct (rides the next push). Otherwise reply in one line why it stays as is, resolve. No issue |
+| 💡 Suggestion / 🔹 Nit, pre-existing | Size S in a file the PR already edits: treat as plainly correct. Otherwise reply in one line why it stays as is, resolve. No issue |
 | 💡 Suggestion / 🔹 Nit, not worth its code | Reply in one line why it stays as is, resolve. No issue |
 
 A reply-only round needs no `just ci`, no pre-push hook and no wait for CI.

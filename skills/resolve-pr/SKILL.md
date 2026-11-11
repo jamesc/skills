@@ -31,8 +31,14 @@ When activated, execute this workflow to systematically address all PR review co
 3. **Analyze and plan — triage by severity first**: For each review comment:
    - Understand what the reviewer is asking for
    - **🛑 Blocker, a human reviewer's ask, or any finding that is a real bug in this PR's code:** needs a code fix (or a reply with why not and a resolve). These are the only threads that justify a push.
-   - **💡 Suggestion / 🔹 Nit:** reply in one line and resolve; **do not push for it alone**. The bot re-reviews every push and answers with fresh Suggestions and Nits, so a push per finding never converges and each costs a ~30 min CI run plus a review round. A plainly-correct one (or one that correctly cites a `CLAUDE.md` / guidelines rule) rides along *only if* a push is happening anyway for a Blocker or a CI fix; a valid larger one becomes a follow-up Linear issue (reply with the link); the rest stay as is with the reason in the reply.
-   - Create a todo list with all items to address, marking each `push` (code change) or `reply-only`
+   - **💡 Suggestion / 🔹 Nit:** the plainly-correct ones (and any that correctly cites a `CLAUDE.md` / guidelines rule) are fixed together in the PR's **one cleanup push**. The bot re-reviews every push and answers with fresh Suggestions and Nits, so a push per finding never converges and each costs a ~30 min CI run plus a review round; one batched push fixes the small things without starting that loop. Check whether it is spent:
+     ```bash
+     git log origin/main..HEAD --oneline --grep='^chore: review cleanup'
+     ```
+     - **No output (not spent):** mark every plainly-correct Suggestion and Nit `cleanup`. They all go into a single commit with the subject `chore: review cleanup BT-{number}` (the check depends on that subject), separate from any Blocker fix commit, and are pushed once in step 9.
+     - **Any output (spent):** mark them `reply-only`. They get a one-line reply and a resolve, with no code change, unless a push is happening anyway for a Blocker or a CI fix, in which case they ride along.
+     - Either way, a valid one of size M or larger becomes a follow-up Linear issue (reply with the link), and one that is wrong, cosmetic or not worth its code stays as is with the reason in the reply.
+   - Create a todo list with all items to address, marking each `push` (code change), `cleanup`, or `reply-only`
    - **If every item is `reply-only`, skip steps 4–9** and go straight to step 10.
 
 4. **Run tests first** for the crates the review touches (not the workspace):
@@ -66,7 +72,7 @@ When activated, execute this workflow to systematically address all PR review co
    `just ci`) only when this round changed build or test configuration, the Justfile, or
    added a crate.
 
-8. **Commit changes**: Stage and commit with a descriptive message (using issue ID from step 1):
+8. **Commit changes**: Stage and commit with a descriptive message (using issue ID from step 1). Commit `cleanup` items separately as `chore: review cleanup BT-{number}`:
    ```bash
    git add -A
    git commit -m "fix: address PR review comments BT-{number}
