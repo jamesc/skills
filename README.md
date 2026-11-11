@@ -25,7 +25,7 @@ The day-to-day loop for implementing issues:
 
 For a whole epic at once, `/pick-epic` runs the child issues in dependency-ordered waves using parallel subagents — one isolated worktree and PR per issue, squash-merging as CI and automated reviews pass.
 
-To work through the backlog itself, `/burn-backlog` keeps N cloud sessions running (default 6, one `agent-ready` issue each). Each session merges its PR when it's green, and finished slots are refilled from a queue.
+To work through the backlog, or one or more epics, `/burn-backlog` keeps N cloud sessions running (default 6, one issue each). Each session merges its PR when it's green, and finished slots are refilled from a queue. In epic mode a child starts only after its blockers are done.
 
 ### Refactoring
 

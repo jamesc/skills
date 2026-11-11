@@ -1,7 +1,7 @@
 ---
 name: burn-backlog
-description: Burn down the Linear backlog by orchestrating N parallel cloud sessions (default 6), one issue each, merging when green, archiving finished sessions and refilling the slot from a queue. Use when user types /burn-backlog or asks to work through the backlog with parallel sessions.
-argument-hint: "[slots=6] [model=claude-sonnet-5-5] [extra filter, e.g. label or team]"
+description: Burn down Linear work, either the whole backlog or one or more epics, by orchestrating N parallel cloud sessions (default 6), one issue each, merging when green, archiving finished sessions and refilling slots from a queue. Use when user types /burn-backlog, or asks to work through the backlog or an epic with parallel sessions.
+argument-hint: "[backlog | BT-XXX epic(s)] [slots=6] [model=claude-sonnet-5-5] [extra filter, e.g. label or team]"
 ---
 
 # Burn Backlog Workflow
@@ -13,19 +13,38 @@ The user's standing instructions for a run are:
 - **Follow-ups stay in the same PR/session.** Don't file new issues unless the work is large, in another repo, or needs a human decision. The goal is a smaller backlog.
 - **Keep N slots busy.** Every time something closes, start the next issue.
 
-Parse arguments: slot count (default 6), child model (default the latest Sonnet, e.g. `claude-sonnet-5-5`), and any extra filter.
+Parse arguments:
+- **Target.** `backlog` (the default when no issue IDs are given) or one or more **epic IDs** (`BT-XXX`). An argument that's an issue ID is an epic if it has the `Epic` label or has children; otherwise treat it as a single issue to add to the queue.
+- **Slot count** (default 6).
+- **Child model** (default the latest Sonnet, e.g. `claude-sonnet-5-5`).
+- **Extra filter** (label, team, project), applied to backlog mode.
 
 ---
 
 ## 1. Build the queue
 
+### Backlog mode
+
 1. `list_issues` with `state: backlog` (limit 100+, page through), fields `id,title,priority,estimate,labels,status,parentId`.
 2. Keep issues labelled `agent-ready`. Drop anything labelled `blocked` or `needs-spec`, and drop `Epic`s.
 3. Order: S before M before L, Bugs and small Improvements first, then by priority.
-4. **Spread the first batch across areas** (codegen, runtime, class-system, repl, stdlib, lsp, cli…) so parallel PRs don't conflict.
-5. **Defer conflict magnets to the end**: mechanical sweeps across hundreds of sites (clippy-wide fixes, mass renames, formatter changes). Run them alone, after the other sessions have merged.
-6. Pair tightly related issues (one is cleanup of the other, same function) into **one session / one PR**.
-7. Check `list_sessions` for sessions already working an issue; skip those.
+
+### Epic mode
+
+1. For each epic, `list_issues` with `parentId: BT-XXX` to get its children. Then call `get_issue` (with `includeRelations`) on each open child to read its labels, size and **blocking relations**; `list_issues` doesn't return relations.
+2. Skip children that are `Done`, `Canceled` or already `In Progress` in another session.
+3. **Respect dependencies.** A child is *ready* when every issue that blocks it is `Done`. Only ready children enter the active slots. The rest wait in the queue with their blockers noted. After each merge, re-check which waiting children are now ready. Never start a child whose blocker is still open, even if a slot is free: leave the slot empty instead.
+4. Labels: an epic's children are in scope even without `agent-ready`, but a `needs-spec` or `blocked` child is reported to the user, not started. If it blocks the rest of the epic, say so and stop that epic's queue there.
+5. Order ready children by size (S first), then priority. With several epics, fill slots round-robin across epics so one epic's chain doesn't hold up the others.
+6. Tell each child session which epic it belongs to and what its siblings have already merged, so it builds on that work.
+7. When an epic's last child is Done, mark the epic Done with a short summary comment listing the PRs. If children remain that you couldn't run (needs-spec, blocked), leave the epic open and say what remains.
+
+### Both modes
+
+1. **Spread the first batch across areas** (codegen, runtime, class-system, repl, stdlib, lsp, cli…) so parallel PRs don't conflict.
+2. **Defer conflict magnets to the end**: mechanical sweeps across hundreds of sites (clippy-wide fixes, mass renames, formatter changes). Run them alone, after the other sessions have merged.
+3. Pair tightly related issues (one is cleanup of the other, same function) into **one session / one PR**.
+4. Check `list_sessions` for sessions already working an issue; skip those.
 
 Write the queue and the active table to a state file in the scratchpad (`state.md`): `issue → session_id`, a `Queue` line and a `Done` list (PR number + any leftover note). Re-read it at every check-in. It is what survives context compaction.
 
@@ -66,7 +85,7 @@ Keep the child prompt plain: when a child can't proceed (merge refused, check st
 
 1. **Verify.** `get_issue` shows `Done` (or `Canceled` with a reason), and the PR is merged (`list_pull_requests` / `pull_request_read`). Don't trust the message alone.
 2. `archive_session` the child.
-3. Start the next queued issue in the freed slot (§2) and update `state.md`.
+3. Start the next *ready* queued issue in the freed slot (§2) and update `state.md`. In epic mode, first re-check which waiting children this merge unblocked.
 4. Note any leftover the child reports. If it's in the issue's own scope, ask the child to finish it in a follow-up PR *before* archiving, or to document on the issue exactly what remains and why. Follow-ups that belong in another repo, or are blocked on a release/nightly, go in `state.md` and the user summary, not a new issue.
 5. Give the user a short update: what closed (one line on what changed), what started, a running tally (merged / canceled), and what's running and queued.
 
@@ -92,8 +111,8 @@ Keep the child prompt plain: when a child can't proceed (merge refused, check st
 
 ## 5. Finishing
 
-When the queue is empty:
+When the queue is empty (in epic mode: every child is Done or reported as not runnable):
 1. Run any deferred conflict-magnet sweep alone, now that the other sessions have merged.
-2. Final summary: issues closed (merged vs canceled), PR numbers, leftovers noted but not filed, and what's left in the backlog (blocked / needs-spec / epics).
+2. Final summary: epics completed (if any), issues closed (merged vs canceled), PR numbers, leftovers noted but not filed, and what's left in the backlog (blocked / needs-spec / epics).
 3. Ask the user whether to move on to `needs-spec` issues that look clear enough to work, or stop.
 4. Cancel the remaining `send_later` check-in (`delete_trigger`).
