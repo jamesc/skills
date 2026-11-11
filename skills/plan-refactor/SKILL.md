@@ -47,7 +47,9 @@ Perform a **whole-repo analysis** to identify refactoring opportunities that imp
    # Cross-reference churn hotspots with file sizes above
    ```
 
-3. **Analyze architecture against principles**: Check each concern area:
+3. **Analyze architecture against principles**: Check each concern area.
+
+   For a whole-repo scope, run the concern areas as parallel `Agent` calls with `subagent_type: "Explore"` and `model: "sonnet"`, one per area (a–h), each returning a list of findings with `file:line` evidence. The scans are pattern-matching over many files; keep Opus for step 4 onward, where the findings are judged, ranked and turned into issues. Read a file yourself only to confirm a finding you intend to file. For a single crate or concern, scan inline.
 
    **a. DDD Alignment** (reference: `docs/beamtalk-ddd-model.md`)
    - Modules using generic names instead of domain terms

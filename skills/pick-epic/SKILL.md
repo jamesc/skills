@@ -58,12 +58,21 @@ For each wave:
 
 **4a. Launch one subagent per issue in the wave (all in parallel):**
 
-Before launching, write the **agent ledger** for this wave (a simple table, kept in your own report/scratch notes — not a file the subagents share): `issue | worktree path | branch | agent id/name | status`. Populate it as each agent starts. Verify before launch:
+Before launching, write the **agent ledger** for this wave (a simple table, kept in your own report/scratch notes — not a file the subagents share): `issue | size | model | worktree path | branch | agent id/name | status`. Populate it as each agent starts. Verify before launch:
 - No issue appears twice (no two agents assigned to the same issue).
 - No two agents share a worktree path.
 - Each planned worktree path is not already in use by a leftover worktree from a prior run (`git worktree list`) — remove stale ones first.
 
 Use `Agent` tool with `isolation: "worktree"` and `run_in_background: true` for every issue in the wave simultaneously. Each agent receives a complete self-contained prompt (see **Agent Prompt Template** below).
+
+Set each agent's `model` from the issue's size label, and record it in the ledger:
+
+| Size | `model` | Why |
+|---|---|---|
+| S, M | `"sonnet"` | A well-specified `agent-ready` issue is routine implementation |
+| L, XL, or no size label | `"opus"` | Cross-cutting changes, where a wrong turn costs a 30 min CI round |
+
+Without an explicit `model` every agent inherits this skill's Opus. The chain inside the agent adjusts itself: `/review-code` raises the review to Opus, and `/done` drops back to Sonnet for the commit, push and CI wait. If a Sonnet agent fails twice on the same issue, relaunch it once on `"opus"` before stopping to ask.
 
 **4b. Wait for all agents in the wave to complete.** Update the ledger's `status` column as each agent finishes (done / failed / needs-fix) — use the ledger, not memory, to track what's left in the wave. If an agent's returned worktree path or branch doesn't match its ledger entry, stop and reconcile before continuing (see **When to Stop and Ask**).
 

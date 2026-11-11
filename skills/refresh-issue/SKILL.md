@@ -1,6 +1,7 @@
 ---
 name: refresh-issue
 description: Refresh a Linear issue to align with current docs and code state. Use when user types /refresh-issue BT-XX or asks to refresh/sync an issue with the codebase.
+model: sonnet
 argument-hint: "BT-XX (issue ID)"
 allowed-tools: Bash, Read, Grep, Glob, mcp__linear-server__get_issue, mcp__linear-server__save_issue, mcp__linear-server__save_comment, mcp__linear-server__list_issue_labels
 ---

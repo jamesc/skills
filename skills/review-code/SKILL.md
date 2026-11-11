@@ -2,6 +2,7 @@
 name: review-code
 description: Review current branch changes vs main. Use when user types /review-code or asks for a code review of their changes.
 model: opus
+effort: high
 ---
 
 # Code Review Workflow
@@ -158,7 +159,7 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
 
 ### Steps
 
-15. **Launch adversarial model review** using the Agent tool with a fresh, context-free subagent — it hasn't seen the implementation discussion, so it can push back without anchoring on your reasoning. Default coding model is Sonnet 5; use `model: "opus"` for this pass so the review comes from a different tier, not just a fresh context:
+15. **Launch adversarial model review** using the Agent tool with a fresh, context-free subagent — it hasn't seen the implementation discussion, so it can push back without anchoring on your reasoning. Pass `model: "opus"` explicitly so the reviewer is Opus whatever model wrote the code. If the diff is size S (under about 100 changed lines, one file), skip the subagent: Passes 1 and 2 already ran on Opus and a second Opus read of a small diff rarely finds more:
 
     Launch via `Agent` with `subagent_type: "general-purpose"` and `model: "opus"`:
 

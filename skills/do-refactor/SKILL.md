@@ -1,7 +1,8 @@
 ---
 name: do-refactor
 description: Execute a refactoring epic on a single branch, implementing all issues sequentially with CI verification after each. Use when user types /do-refactor or asks to execute a refactoring plan.
-model: opus
+model: sonnet
+effort: high
 argument-hint: "BT-XXX (epic ID)"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, mcp__linear-server__get_issue, mcp__linear-server__list_issues, mcp__linear-server__save_issue, mcp__linear-server__save_comment
 ---
@@ -72,11 +73,12 @@ Execute a **refactoring epic** on a single branch, implementing all child issues
    - If stuck after 3 attempts, STOP and ask the user for help
    - Do NOT move to the next issue with broken tests
 
-   **d. Review the changes** (invoke the `review-code` skill):
+   **d. Review the changes** in a subagent: launch `Agent` with `subagent_type: "general-purpose"` and `model: "opus"`, and this prompt:
    ```
-   /review-code
+   Run /review-code on the uncommitted changes in this working tree (issue BT-YYY).
+   Fix any 🔴/🟡 findings in place. Report what you found and what you changed.
    ```
-   This runs a multi-pass code review against main. Fix any issues found before committing. Re-run `just test` if changes were made.
+   The review runs on Opus while this run stays on Sonnet: invoking `/review-code` inline would pin the rest of the epic to Opus, and its output would sit in this context for every later issue. Re-run `just test` if the subagent changed anything.
 
    **e. Commit with issue ID:**
    ```bash

@@ -102,7 +102,7 @@ description: What this skill does and when to use it.
 ---
 ```
 
-3. Optional fields: `model`, `argument-hint`, `allowed-tools`
+3. Optional fields: `model`, `effort`, `context`, `agent`, `argument-hint`, `allowed-tools`, `disable-model-invocation`. Pick `model` by the policy in "Model Policy" below.
 
 ## Adding an Agent
 
@@ -121,7 +121,30 @@ description: What this agent does.
 ---
 ```
 
-3. Optional fields: `tools`, `model`, `maxTurns`, `permissionMode`, `isolation`, `background`, `skills`, `mcpServers`, `hooks`, `memory`, `disallowedTools`
+3. Optional fields: `tools`, `model`, `effort`, `maxTurns`, `permissionMode`, `isolation`, `background`, `skills`, `mcpServers`, `hooks`, `memory`, `disallowedTools`
+
+## Model Policy
+
+Each skill runs on the cheapest model that does its job reliably. A skill's `model` and `effort` apply for the rest of the turn that invokes it, then the session model resumes.
+
+| Tier | Model | Work | Skills |
+|---|---|---|---|
+| Mechanical | `haiku` | Linear queries and bulk label edits, running a script | `whats-next`, `update-issues`, `sync-skills` |
+| Routine | `sonnet` | Well-specified implementation, merges, commit/push/PR, comparing an issue against the code | `done`, `resolve-merge`, `refresh-issue`, `do-refactor` |
+| Judgment | `opus` | Reviews, planning, orchestrating parallel agents | `review-code`, `review-adr`, `plan-adr`, `plan-refactor`, `pick-epic` |
+| Open-ended | `fable` | Architecture decisions with no clear answer | `draft-adr` |
+| Session model | (no pin) | Work whose difficulty varies, and reference skills | `pick-issue`, `resolve-pr`, `create-issue`, `explain`, `linear`, `use-lsp` |
+
+Rules for choosing:
+
+- **Pin a model only when the work is the same tier every time.** `pick-issue` implements anything from a typo to a codegen change, so it follows the session model. Choose that with `/model` before you start.
+- **Never pin a reference skill.** `linear` and `use-lsp` load on their own in the middle of other work, and a pin would move that work to the pinned model for the rest of the turn.
+- **In a chain, the last pinned skill wins.** `/pick-issue` → `/review-code` → `/done` runs on the session model, rises to Opus for the review, and drops to Sonnet for the push and CI wait. A skill at the end of a chain needs a pin for this reason, or it runs on whatever came before it.
+- **Put the expensive model on the narrow step.** `do-refactor` runs on Sonnet and sends each review to an Opus subagent. `draft-adr` and `plan-refactor` send lookups and repo scans to Sonnet subagents and keep the main model for the analysis.
+- **Fork read-heavy mechanical skills** (`context: fork`). `whats-next` and `update-issues` run in a fresh Haiku subagent: Haiku never re-reads the conversation so far, and dozens of issue listings stay out of the main context. A forked skill can't ask the user questions.
+- **Set subagent models on the `Agent` call.** A subagent without `model` inherits the caller's, so an Opus orchestrator spawns Opus workers. `pick-epic` chooses by issue size: S/M on Sonnet, L/XL on Opus.
+- **Raise `effort` before raising the model.** The review skills run at `effort: high`; everything else uses the session level.
+- **An adversarial reviewer runs on a different model from the author.** `review-adr` uses Opus against Fable-drafted ADRs.
 
 ## Validation
 

@@ -1,6 +1,7 @@
 ---
 name: plan-adr
 description: Break an accepted ADR into implementation issues with an Epic. Use when user types /plan-adr or asks to plan implementation of an ADR.
+model: opus
 argument-hint: "[ADR number or file path]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, mcp__linear-server__list_issues, mcp__linear-server__get_issue, mcp__linear-server__save_issue, mcp__linear-server__save_comment
 ---

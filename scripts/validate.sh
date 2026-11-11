@@ -21,8 +21,8 @@ warn()  { ((WARNINGS++)) || true; echo -e "${YELLOW}WARN${NC}: $1"; }
 ok()    { echo -e "${GREEN}OK${NC}: $1"; }
 
 # Valid frontmatter fields
-SKILL_FIELDS="name description model argument-hint allowed-tools"
-AGENT_FIELDS="name description tools disallowedTools model maxTurns permissionMode isolation background skills mcpServers hooks memory"
+SKILL_FIELDS="name description model effort context agent argument-hint allowed-tools disable-model-invocation"
+AGENT_FIELDS="name description tools disallowedTools model effort maxTurns permissionMode isolation background skills mcpServers hooks memory"
 
 # Extract YAML frontmatter lines (between first and second ---)
 get_frontmatter() {
@@ -52,7 +52,15 @@ is_valid_model() {
   local model="$1"
   [[ "$model" =~ ^claude- ]] && return 0
   case "$model" in
-    fable|opus|sonnet|haiku) return 0 ;;
+    fable|opus|sonnet|haiku|inherit) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Check if an effort level is valid
+is_valid_effort() {
+  case "$1" in
+    low|medium|high|xhigh|max) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -98,6 +106,18 @@ for skill_dir in "$REPO_DIR"/skills/*/; do
   model=$(get_field "$skill_file" "model")
   if [ -n "$model" ] && ! is_valid_model "$model"; then
     error "$skill_name: model '$model' is not a recognized model name"
+  fi
+
+  # Validate effort field if present
+  effort=$(get_field "$skill_file" "effort")
+  if [ -n "$effort" ] && ! is_valid_effort "$effort"; then
+    error "$skill_name: effort '$effort' is not one of low, medium, high, xhigh, max"
+  fi
+
+  # A forked skill has no conversation history to fall back on, so it must not
+  # inherit whatever model the session happens to be on
+  if [ "$(get_field "$skill_file" "context")" = "fork" ] && [ -z "$model" ]; then
+    error "$skill_name: context: fork needs an explicit model"
   fi
 
   # Check for unknown fields
@@ -146,6 +166,11 @@ for agent_file in "$REPO_DIR"/agents/*.md; do
   model=$(get_field "$agent_file" "model")
   if [ -n "$model" ] && ! is_valid_model "$model"; then
     error "$agent_name: model '$model' is not a recognized model name"
+  fi
+
+  effort=$(get_field "$agent_file" "effort")
+  if [ -n "$effort" ] && ! is_valid_effort "$effort"; then
+    error "$agent_name: effort '$effort' is not one of low, medium, high, xhigh, max"
   fi
 
   get_keys "$agent_file" | while IFS= read -r key; do
