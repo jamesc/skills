@@ -50,7 +50,7 @@ When activated, execute this workflow to systematically address all PR review co
 6. **Address each comment**: For each item in the plan:
    - Make the necessary code changes to make the test pass
    - Run tests after each significant change to catch regressions early
-   - Fix valid findings in this PR by default. Create a follow-up Linear issue only when the fix is in another repo or a subsystem this PR doesn't touch, is bigger than about half a day, needs a design decision from the user, or is a security finding you can't fix now. A size-S finding in code the PR already touches is fixed, not filed. If you do file:
+   - Fix valid findings in this PR by default; the backlog is being closed down, so a new Linear issue is the last resort. Any size-S finding in this repo is fixed here, including one in a neighbouring subsystem or a pre-existing problem in a file the PR already edits. A finding that isn't worth fixing now and that nobody would schedule is dropped with a one-line reply, not filed. Create a follow-up Linear issue only when the fix is in another repo, is size M or larger (more than about half a day), needs a design decision from the user, or is a security finding you can't fix now. If you do file:
      - Search Linear for an open issue with the same root cause first, and add to it instead of opening a duplicate
      - Create the Linear issue with full context
      - Add a TODO comment in the code referencing the issue number
@@ -134,4 +134,4 @@ A red CI check on the PR is **not** automatically a review item. Before treating
    ```
    If the re-run goes green, it was flaky — note it in the report and move on. If it fails the same way again, treat it as real and investigate.
 
-Don't loop on re-runs: one re-run decides it. And don't fix failures in code outside this PR's scope — file a follow-up issue instead.
+Don't loop on re-runs: one re-run decides it. A real failure in code outside this PR's scope is fixed here if the fix is size S. If it is larger, add it to an existing Linear issue with the same root cause, and file a new one only if none exists.

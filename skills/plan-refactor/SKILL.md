@@ -154,7 +154,7 @@ Perform a **whole-repo analysis** to identify refactoring opportunities that imp
    - [N] cosmetic-only findings omitted
    ```
 
-   Ask the user which findings to create issues for before proceeding.
+   Ask the user which findings to create issues for before proceeding. Recommend only the findings with clear evidence and high impact: the backlog is being closed down, so a finding that wouldn't be scheduled in the next cycle or two stays in this report and doesn't become an issue.
 
 7. **Create Linear issues**: For each approved finding, create a well-specified issue using the create-issue skill patterns:
    - **Title**: Clear, action-oriented (e.g., "Refactor: Split god file parser/mod.rs into focused modules")

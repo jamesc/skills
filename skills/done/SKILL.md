@@ -223,8 +223,10 @@ When activated, execute this workflow to complete work and push:
          (a Blocker fix, a CI fix, a human reviewer's change). If no such push comes, they land as
          replied-and-resolved with no code change — that is the intended outcome, not a gap.
       3. A Suggestion that describes a real bug in this PR's code is a Blocker whatever its tag:
-         treat it under the Blocker branch. A valid improvement too large for this PR gets a
-         follow-up Linear issue; reply with the link and resolve.
+         treat it under the Blocker branch. A valid improvement of size M or larger gets a
+         follow-up Linear issue (add to an existing one with the same root cause if there is
+         one); reply with the link and resolve. Anything smaller is carried into the next push
+         or declined in the reply, never filed: the backlog is being closed down.
       A reply-only round needs no `just test`, no `just ci` and no push. Never run the pre-push
       hook or wait for CI to satisfy a Suggestion or a Nit.
 

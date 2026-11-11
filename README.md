@@ -30,6 +30,8 @@ For a whole epic at once, `/pick-epic` runs the child issues in dependency-order
 1. `/plan-refactor` — analyze the codebase and plan refactoring work as an epic
 2. `/do-refactor` — execute the refactoring epic sequentially on a single branch, verifying CI after each issue
 
+Small problems found along the way (by `/review-code`, the review bot, or `/resolve-pr`) are fixed in the PR that found them. The backlog is being closed down, so these skills file a follow-up issue only for work in another repo, work of size M or larger, a decision that needs you, or a security finding that can't be fixed now. Everything else is fixed or dropped with a reason.
+
 ### Issue management
 
 - `/linear` — general Linear issue management (tasks, tickets, bugs)

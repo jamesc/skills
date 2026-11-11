@@ -190,8 +190,8 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
 17. **Triage findings** from the adversarial review. For each:
     - **Valid and fixable now** → implement the fix
     - **Security issue, can't fix now** → create Linear issue with `Bug` label + urgent priority. **Never drop security findings.**
-    - **Valid but out of scope** → create a Linear issue only if it meets a filing condition in step 19; otherwise fix it here
-    - **Theoretical, unlikely in practice** → note but don't act
+    - **Valid but out of scope** → fix it here unless it meets a filing condition in step 19
+    - **Theoretical, unlikely in practice** → drop it; list it in the summary with a one-line reason, don't file it
     - **Wrong / already handled** → dismiss with explanation
 
 18. **Final check** if any changes were made in Pass 3:
@@ -208,9 +208,17 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
 
 ## Summary
 
-19. **Create follow-up issues**: Fix valid findings in this PR by default. Anything that legitimately isn't fixed here **must** get a Linear issue — findings should never be just "noted" and forgotten.
+19. **Fix, drop, or file**: The backlog is being closed down, so a new Linear issue is the last resort. Every valid finding ends in exactly one of three places, tried in this order:
 
-    **Fix-or-file rule.** File instead of fixing only when at least one holds: the fix is in another repo or a subsystem this PR doesn't otherwise touch; it is bigger than about half a day (size M or larger); it needs a design decision from the user; or it is a security finding you can't fix now. A size-S finding in code the PR already touches is fixed, never filed. Before filing, search Linear for an open issue with the same root cause and add to it rather than opening a duplicate. Note in the summary which condition each filed issue met.
+    1. **Fix it in this PR.** This is the default, and it covers every size-S finding in this repo: in code the PR touches, in a neighbouring subsystem, or a pre-existing problem in a file the PR already edits.
+    2. **Drop it.** If it isn't worth fixing now and nobody would pick it up in the next cycle (theoretical, cosmetic, speculative hardening), it isn't worth an issue either. List it in the summary with a one-line reason.
+    3. **File it**, only when at least one holds:
+       - the fix is in another repo;
+       - it is size M or larger (more than about half a day);
+       - it needs a design decision from the user;
+       - it is a security finding you can't fix now.
+
+    Before filing, search Linear for an open issue with the same root cause and add a comment to it instead of opening a new one. Group findings in the same area into one issue. In the summary, give the count of issues filed and the condition each one met; "0 filed" is the expected result for most PRs.
 
     **Always create an issue for:**
     - 🔴 **Security findings not fixed now** — label `Bug` + `urgent priority`. Never let security issues be silently dropped.
@@ -260,8 +268,9 @@ Use a fresh Claude subagent to challenge the design with adversarial eyes. This 
 
 ### Action Decision Matrix
 
-- **Fix now** (<2 hours): bugs, security, missing tests/docs, edge cases, naming, style
-- **Create Linear issue**: architectural changes, scope-expanding features, cross-team coordination, >2x PR size
+- **Fix now** (anything up to about half a day): bugs, security, missing tests/docs, edge cases, naming, style
+- **Drop with a reason**: theoretical or cosmetic findings nobody would schedule
+- **Create Linear issue** (only under a step 19 filing condition): architectural changes, scope-expanding features, work in another repo
 - **Security findings are NEVER optional.** Can't fix now → Linear issue with `Bug` + urgent priority immediately.
 - **When in doubt, implement it.**
 
@@ -280,5 +289,5 @@ Follow `CLAUDE.md` Essential Rules, `docs/agents/expanded.md`, and `docs/develop
 
 1. **🔴 Critical** — Fix immediately: bugs, crashes, security, logic errors
 2. **🟡 Recommended** — Implement if straightforward: missing tests, unclear names, docs
-3. **🔵 Larger** — Create Linear issue: architectural changes, major refactoring
+3. **🔵 Larger** — Size M or larger: architectural changes, major refactoring. File under step 19, after checking Linear for an existing issue
 4. **✅ Strengths** — Note what's done well: good coverage, clear code, proper error handling

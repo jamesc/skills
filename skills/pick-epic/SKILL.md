@@ -205,17 +205,18 @@ The bot re-reviews every push and answers with a fresh set of Suggestions and Ni
 | `unknown` (untagged, or a human reviewer's thread) | Treat as a Blocker: fix or reply with why not, resolve |
 | 💡 Suggestion / 🔹 Nit, plainly correct | Reply in one line that it rides the next code push; resolve. Carry it into the next push that happens anyway (a Blocker fix, a CI fix). No push for it alone |
 | 💡 Suggestion / 🔹 Nit, valid but larger than this PR | Apply the fix-or-file rule below: fix it in this PR unless it meets a filing condition; only then create a follow-up Linear issue, reply with the issue link, resolve |
-| 💡 Suggestion / 🔹 Nit, pre-existing or not worth its code | Reply in one line why it stays as is, resolve |
+| 💡 Suggestion / 🔹 Nit, pre-existing | Size S in a file the PR already edits: treat as plainly correct (rides the next push). Otherwise reply in one line why it stays as is, resolve. No issue |
+| 💡 Suggestion / 🔹 Nit, not worth its code | Reply in one line why it stays as is, resolve. No issue |
 
 A reply-only round needs no `just ci`, no pre-push hook and no wait for CI.
 
-**Fix-or-file rule.** A valid finding is fixed in this PR by default. File a follow-up issue only when at least one holds:
-- the fix is in another repo, or a subsystem this PR doesn't otherwise touch;
-- it is bigger than about half a day (size M or larger);
+**Fix-or-file rule.** The backlog is being closed down, so a new Linear issue is the last resort. A valid finding is fixed in this PR by default. File a follow-up issue only when at least one holds:
+- the fix is in another repo;
+- it is size M or larger (more than about half a day);
 - it needs a design decision from the user;
 - it is a security finding you can't fix now (file it `Bug`, urgent; never drop it).
 
-A size-S finding in code the PR already touches is never filed — fix it. Before filing, search Linear for an open issue with the same root cause and add to it instead of opening a new one. List anything filed in the merge summary with the condition that justified it.
+A size-S finding anywhere in this repo is never filed — fix it, including one in a neighbouring subsystem or a pre-existing problem in a file the PR already edits. A finding that isn't worth fixing now and that nobody would schedule is dropped with a one-line reply, not filed. Before filing, search Linear for an open issue with the same root cause and add to it instead of opening a new one; group findings in the same area into one issue. List anything filed in the merge summary with the condition that justified it. Most epics should end with "Follow-up issues created: none".
 
 4. **Reply to and resolve each addressed thread**:
    ```bash
