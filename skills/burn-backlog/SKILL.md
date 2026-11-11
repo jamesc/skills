@@ -75,7 +75,7 @@ If the issue turns out to be already fixed, invalid, or blocked, say so in a Lin
 
 Keep the child prompt plain: when a child can't proceed (merge refused, check stuck red), it reports and stops. Don't add instructions that route around permission checks. Blocked cases go to the user (§3).
 
-## 3. Wait. Don't poll.
+## 3. Wait for events, don't poll
 
 - Children report with `send_message` to `@parent`. That arrives as a notification and wakes you.
 - Also schedule a fallback check-in with `send_later` every 25–30 minutes. Children that finish cleanly sometimes don't message.
