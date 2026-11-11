@@ -25,6 +25,8 @@ The day-to-day loop for implementing issues:
 
 For a whole epic at once, `/pick-epic` runs the child issues in dependency-ordered waves using parallel subagents — one isolated worktree and PR per issue, squash-merging as CI and automated reviews pass.
 
+To work through the backlog itself, `/burn-backlog` keeps N cloud sessions running (default 6, one `agent-ready` issue each). Each session merges its PR when it's green, and finished slots are refilled from a queue.
+
 ### Refactoring
 
 1. `/plan-refactor` — analyze the codebase and plan refactoring work as an epic
@@ -135,7 +137,7 @@ Each skill runs on the cheapest model that does its job reliably. A skill's `mod
 |---|---|---|---|
 | Mechanical | `haiku` | Linear queries and bulk label edits, running a script | `whats-next`, `update-issues`, `sync-skills` |
 | Routine | `sonnet` | Well-specified implementation, merges, commit/push/PR, comparing an issue against the code | `done`, `resolve-merge`, `refresh-issue`, `do-refactor` |
-| Judgment | `opus` | Reviews, planning, orchestrating parallel agents | `review-code`, `review-adr`, `plan-adr`, `plan-refactor`, `pick-epic` |
+| Judgment | `opus` | Reviews, planning, orchestrating parallel agents | `review-code`, `review-adr`, `plan-adr`, `plan-refactor`, `pick-epic`, `burn-backlog` |
 | Open-ended | `fable` | Architecture decisions with no clear answer | `draft-adr` |
 | Session model | (no pin) | Work whose difficulty varies, and reference skills | `pick-issue`, `resolve-pr`, `create-issue`, `explain`, `linear`, `use-lsp` |
 
