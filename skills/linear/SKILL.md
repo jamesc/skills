@@ -1,7 +1,6 @@
 ---
 name: linear
 description: Manage Linear issues. Use when asked about tasks, tickets, bugs, or Linear.
-model: haiku
 ---
 
 # Linear

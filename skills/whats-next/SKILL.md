@@ -2,6 +2,7 @@
 name: whats-next
 description: Find the next logical piece of work. Use when user types /whats-next or asks what they should work on next, or wants recommendations for the next task.
 model: haiku
+context: fork
 allowed-tools: Bash, Read, Grep, Glob, mcp__linear-server__list_cycles, mcp__linear-server__list_issues, mcp__linear-server__get_issue
 ---
 
@@ -54,7 +55,9 @@ Use the Linear MCP tools (`mcp__linear-server__*`) for all Linear queries. `list
    - Why it's recommended (cycle, related to recent work, unblocks others, etc.)
    - Any caveats (e.g., "large scope, consider breaking down")
 
-8. **Optional: Start work**: Ask the user if they want to start on the top recommended issue (which would run the `/pick-issue` workflow for that specific issue).
+8. **Flag stale candidates**: Under the table, list up to 5 Backlog issues not updated in 90 days or more as candidates for `/refresh-issue BT-XX`, which closes the ones that are already done or obsolete. Listing only; don't change them.
+
+9. **Hand back**: End with the table and the top pick. This skill runs in a forked subagent, so it can't ask the user anything; the main conversation offers to start the top pick with `/pick-issue BT-XX`.
 
 ## Scoring Logic
 
@@ -65,6 +68,7 @@ Use the Linear MCP tools (`mcp__linear-server__*`) for all Linear queries. `list
 | Blocker completed in last 7 days (newly unblocked) | +25 |
 | Related to recently completed work (same parent or area) | +20 |
 | Unblocks other issues | +15 |
+| Size `S` (closes quickly; the backlog is being drawn down) | +10 |
 | Priority 1 (Urgent) | +10 |
 | Priority 2 (High) | +5 |
 | Has unresolved blocking dependencies | -100 |

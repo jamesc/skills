@@ -1,6 +1,7 @@
 ---
 name: sync-skills
 description: Sync modified skills and agents back to the repo and create a PR. Use when user types /sync-skills or wants to save in-session skill improvements.
+model: haiku
 allowed-tools: Bash, Read, Glob, Grep
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: done
 description: Complete work and push changes. Use when user types /done or says they are finished with the current task and ready to commit/push/create PR.
+model: sonnet
 argument-hint: "[BT-number]"
 allowed-tools: Bash, Read, Grep, Glob, mcp__linear-server__get_issue, mcp__linear-server__save_issue, mcp__linear-server__save_comment
 ---
@@ -93,8 +94,9 @@ When activated, execute this workflow to complete work and push:
 11. **Update Linear state**: Mark the Linear issue as "In Review" with `save_issue` (id: "BT-{number}", state: "In Review").
 
 12. **Bot review gate** — never proceed past this step with an unresolved 🛑 **Blocker** thread. A
-    💡 **Suggestion** or 🔹 **Nit** thread is answered and resolved, and is **never** the reason for a
-    push on its own (see (c) below for why).
+    💡 **Suggestion** or 🔹 **Nit** thread is answered and resolved. The plainly-correct ones are
+    fixed together in **one cleanup push per PR**; after that push they never start another
+    (see (c) below for why).
 
     The CI reviewer is the **Claude review bot**, which runs as the **`Claude BeamTalk Review`**
     CI workflow (`.github/workflows/claude-review.yml`, `anthropics/claude-code-action`) and
@@ -209,28 +211,45 @@ When activated, execute this workflow to complete work and push:
       3. **Override** → user types `merge anyway` (exact phrase) to proceed despite findings. Log the override in the final report.
       Do not proceed to step 13 with a Blocker open without one of {resolve done, dismiss done, explicit override}.
 
-    - **💡 Suggestion and 🔹 Nit: reply and resolve, do not push for them.** The review bot
-      re-reviews *every* push and answers with a fresh set of Suggestions and Nits even when its
-      verdict is "approved", so one push per finding is an unbounded loop that costs a full CI
-      run (~30 min on the three-OS `check` matrix) and a review round each time — BT-3823's PR
-      took 8 pushes and 6 review rounds over 5 hours this way. Instead, for each such thread:
-      1. Reply in **one line**: either what you will change and that it rides the next code push,
-         or why it stays as is (correct as written / pre-existing / out of scope, tracked in
-         BT-XXXX). Then resolve the thread.
-      2. Carry the plainly-correct ones, and any that correctly cites a `CLAUDE.md` or
-         `docs/development/*-guidelines.md` rule, into the **next push that is happening anyway**
-         (a Blocker fix, a CI fix, a human reviewer's change). If no such push comes, they land as
-         replied-and-resolved with no code change — that is the intended outcome, not a gap.
-      3. A Suggestion that describes a real bug in this PR's code is a Blocker whatever its tag:
-         treat it under the Blocker branch. A valid improvement too large for this PR gets a
-         follow-up Linear issue; reply with the link and resolve.
-      A reply-only round needs no `just test`, no `just ci` and no push. Never run the pre-push
-      hook or wait for CI to satisfy a Suggestion or a Nit.
+    - **💡 Suggestion and 🔹 Nit: fix the correct ones in one cleanup push, then reply-only.**
+      The review bot re-reviews *every* push and answers with a fresh set of Suggestions and Nits
+      even when its verdict is "approved", so one push per finding is an unbounded loop that
+      costs a full CI run (~30 min on the three-OS `check` matrix) and a review round each time
+      — BT-3823's PR took 8 pushes and 6 review rounds over 5 hours this way. A PR therefore
+      gets exactly **one cleanup push**, so small correct findings are fixed here and not
+      dropped or filed, and the loop still ends.
+      1. **Check whether the cleanup push is spent:**
+         ```bash
+         git log origin/main..HEAD --oneline --grep='^chore: review cleanup'
+         ```
+         Any output means it is spent.
+      2. **Not spent, and at least one finding is plainly correct** (or correctly cites a
+         `CLAUDE.md` or `docs/development/*-guidelines.md` rule): fix *all* of them in a single
+         commit whose subject is `chore: review cleanup BT-{number}` (the check in 1 depends on
+         that subject). Run `just test-rust-crate <crate>` for each crate touched and
+         `just clippy`, then push once. Reply on each thread with the commit hash and resolve
+         it. If a Blocker fix is being pushed in the same round, keep the cleanup as its own
+         commit in that push; it still spends the cleanup. Then re-run this gate from (a) for
+         the re-review.
+      3. **Spent:** reply in **one line** on each thread with why it stays as is, and resolve
+         it. No code change and no push, however correct the finding; say in the final report
+         how many correct findings were left unfixed for this reason. They ride along only if a
+         Blocker fix, a CI fix or a human reviewer's change is being pushed anyway.
+      4. Findings that are wrong, cosmetic or not worth their code get a one-line reply and a
+         resolve in either case, and never count toward a cleanup push. If none of the findings
+         is plainly correct, the cleanup push stays unspent.
+      5. A Suggestion that describes a real bug in this PR's code is a Blocker whatever its tag:
+         treat it under the Blocker branch. A valid improvement of size M or larger gets a
+         follow-up Linear issue (add to an existing one with the same root cause if there is
+         one); reply with the link and resolve. Anything smaller goes into the cleanup push
+         or is declined in the reply, never filed: the backlog is being closed down.
+      A reply-only round needs no `just test`, no `just ci` and no push. Once the cleanup push
+      is spent, never run the pre-push hook or wait for CI to satisfy a Suggestion or a Nit.
 
     **d. If zero unresolved Blocker threads remain**, report ✅ (with the count of Suggestions and
-    Nits replied to and resolved, and how many ride a later push) and continue.
+    Nits fixed in the cleanup push, and the count replied to and resolved without a change) and continue.
 
-13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and the bot review gate result (passed clean / passed after resolve / passed with N Suggestions and Nits replied-and-resolved / overridden by user with phrase). If overridden, include the count of skipped Blockers so the risk is visible in the report.
+13. **Report success**: Confirm the commit was pushed, PR was created/updated (include PR URL), Linear was updated, and the bot review gate result (passed clean / passed after resolve / passed with N Suggestions and Nits fixed in the cleanup push and M replied-and-resolved / overridden by user with phrase). If overridden, include the count of skipped Blockers so the risk is visible in the report.
 
 ## When PR is merged
 

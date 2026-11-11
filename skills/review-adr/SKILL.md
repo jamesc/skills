@@ -2,6 +2,7 @@
 name: review-adr
 description: Review an Architecture Decision Record for completeness, correctness, and quality. Use when user types /review-adr or asks to review an ADR.
 model: opus
+effort: high
 argument-hint: "[ADR file path or number]"
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, WebSearch
 ---
@@ -187,9 +188,8 @@ Challenge the decision from outside the author's perspective. Use a fresh, conte
 ### 3a. Launch Adversarial Review
 
 Use the `Agent` tool with `subagent_type: "general-purpose"` and `model: "opus"` — a fresh
-subagent hasn't seen the drafting discussion, and Opus gives a different tier of judgment
-than the Fable model that `draft-adr` uses to write ADRs (and the Sonnet 5 coding default).
-Keep this reviewer on a different tier from the drafter:
+subagent hasn't seen the drafting discussion, and Opus is a different model from the Fable
+that `draft-adr` uses to write ADRs. Keep this reviewer on a different model from the drafter:
 
 ```
 You are a skeptical principal architect reviewing an ADR. Your job is to find

@@ -2,6 +2,7 @@
 name: update-issues
 description: Find and update Linear issues that need labels, blocking relationships, or metadata. Use when user says '/update-issues' with criteria like 'no labels', 'missing agent-ready', 'needs size', etc.
 model: haiku
+context: fork
 ---
 
 # Update Issues Automatically

@@ -42,7 +42,7 @@ Research a problem, explore trade-offs, and draft an **Architecture Decision Rec
    
    **d. Prior art — how do similar languages/platforms handle this?**
    
-   Compare against these reference points (use web search when needed):
+   Compare against these reference points (use web search when needed). When more than one category is relevant, run them as parallel `Agent` calls with `subagent_type: "general-purpose"` and `model: "sonnet"`, one per category, each returning a short summary with source links. Looking things up doesn't need Fable, and the raw search results stay out of this context; the trade-off analysis from step 3 onward is where Fable earns its cost:
    
    | Category | Languages/Platforms | Why compare |
    |----------|-------------------|-------------|
