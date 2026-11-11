@@ -67,7 +67,7 @@ For each issue found, determine what's missing:
 
 ### Determine Missing Labels
 
-**Agent State:** Must have one of `agent-ready`, `needs-spec`, `blocked`, `human-review`, `done`
+**Agent State:** Must have one of `agent-ready`, `needs-spec`, `blocked`, `deferred`, `human-review`, `done`. Never infer `deferred`; only a human decision sets it.
 
 **Item Area:** Must have one of `class-system`, `stdlib`, `repl`, `cli`, `codegen`, `runtime`, `parser`
 
@@ -200,7 +200,7 @@ save_issue (id: "BT-21", labels: ["agent-ready", "Feature", "stdlib", "M"])
 
 1. **Get open issues with their labels:** `list_issues` (team: "BT"). Exclude Done/Canceled issues from the result set.
 
-2. **Filter to issues whose labels have NO entry in** `[agent-ready, needs-spec, blocked, human-review, done]`
+2. **Filter to issues whose labels have NO entry in** `[agent-ready, needs-spec, blocked, deferred, human-review, done]`
 
 3. **For each, analyze and infer the agent-state label**
 

@@ -74,4 +74,5 @@ Use the Linear MCP tools (`mcp__linear-server__*`) for all Linear queries. `list
 | Has unresolved blocking dependencies | -100 |
 | Has `needs-spec` label (requires human input first) | -50 |
 | Has `blocked` label | -20 |
+| Has `deferred` label (a human decided "not now"; never recommend it) | exclude |
 | Is "In Progress" (another agent working on it) | -200 |

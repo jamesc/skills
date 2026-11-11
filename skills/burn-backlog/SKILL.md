@@ -26,7 +26,7 @@ Parse arguments:
 ### Backlog mode
 
 1. `list_issues` with `state: backlog` (limit 100+, page through), fields `id,title,priority,estimate,labels,status,parentId`.
-2. Keep issues labelled `agent-ready`. Drop anything labelled `blocked` or `needs-spec`, and drop `Epic`s.
+2. Keep issues labelled `agent-ready`. Drop anything labelled `blocked`, `needs-spec` or `deferred`, and drop `Epic`s.
 3. Order: S before M before L, Bugs and small Improvements first, then by priority.
 
 ### Epic mode
@@ -34,7 +34,7 @@ Parse arguments:
 1. For each epic, `list_issues` with `parentId: BT-XXX` to get its children. Then call `get_issue` (with `includeRelations`) on each open child to read its labels, size and **blocking relations**; `list_issues` doesn't return relations.
 2. Skip children that are `Done`, `Canceled` or already `In Progress` in another session.
 3. **Respect dependencies.** A child is *ready* when every issue that blocks it is `Done`. Only ready children enter the active slots. The rest wait in the queue with their blockers noted. After each merge, re-check which waiting children are now ready. Never start a child whose blocker is still open, even if a slot is free: leave the slot empty instead.
-4. Labels: an epic's children are in scope even without `agent-ready`, but a `needs-spec` or `blocked` child is reported to the user, not started. If it blocks the rest of the epic, say so and stop that epic's queue there.
+4. Labels: an epic's children are in scope even without `agent-ready`, but a `needs-spec` or `blocked` child is reported to the user, not started, and a `deferred` child is skipped and listed as deferred. If it blocks the rest of the epic, say so and stop that epic's queue there.
 5. Order ready children by size (S first), then priority. With several epics, fill slots round-robin across epics so one epic's chain doesn't hold up the others.
 6. Tell each child session which epic it belongs to and what its siblings have already merged, so it builds on that work.
 7. When an epic's last child is Done, mark the epic Done with a short summary comment listing the PRs. If children remain that you couldn't run (needs-spec, blocked), leave the epic open and say what remains.
@@ -113,6 +113,10 @@ Keep the child prompt plain: when a child can't proceed (merge refused, check st
 
 When the queue is empty (in epic mode: every child is Done or reported as not runnable):
 1. Run any deferred conflict-magnet sweep alone, now that the other sessions have merged.
-2. Final summary: epics completed (if any), issues closed (merged vs canceled), PR numbers, leftovers noted but not filed, and what's left in the backlog (blocked / needs-spec / epics).
+2. Final summary: epics completed (if any), issues closed (merged vs canceled), PR numbers, leftovers noted but not filed, and what's left in the backlog (blocked / needs-spec / deferred / epics).
 3. Ask the user whether to move on to `needs-spec` issues that look clear enough to work, or stop.
+
+### Decisions on needs-spec issues
+
+When refreshing `needs-spec` issues (e.g. with `/refresh-issue` agents), each one ends in exactly one Agent State: specced → `agent-ready`; already fixed or not wanted → Done/Canceled with a comment; a human says "not now" → `deferred` (Agent State is single-select, so this replaces `needs-spec`) plus a comment recording the decision and what would bring it back. Only issues waiting on a genuine open question stay `needs-spec`. Before trusting an ADR's Implementation Tracking table, check the epic's children in Linear; those tables go stale.
 4. Cancel the remaining `send_later` check-in (`delete_trigger`).

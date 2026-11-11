@@ -36,7 +36,8 @@ Get the full issue details from Linear using `get_issue` with `id: "BT-{number}"
 ### 3. Validate Issue State
 
 Before proceeding, verify the issue is workable:
-- **Must have `agent-ready` label** — if `needs-spec`, stop and tell the user the issue needs specification first.
+- **Must have `agent-ready` label** — if `needs-spec`, stop and tell the user the issue needs specification first. If `deferred`, stop and say a human deferred it; pick it only if the user explicitly names it.
+- When choosing from the backlog (no issue given), never pick a `deferred` issue.
 - **Must not be `Done` or `In Progress`** — if already done, inform the user. If in progress by someone else, warn and ask for confirmation.
 - **Must not be `blocked`** — check that all blocking issues are Done. If blockers remain, list them and stop.
 
